@@ -1,2 +1,2 @@
-# openeo-julia-client
+# OpenEO.jl
 A Julia client for openEO
