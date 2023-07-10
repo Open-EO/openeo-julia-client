@@ -1,3 +1,8 @@
+name = "OpenEOClient"
+uuid = "9017dd28-a51c-45a3-a6d9-1a7ddd59267f"
+authors = ["Daniel Loos <dloos@bgc-jena.mpg.de>"]
+version = "0.1.0"
+
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 OpenAPI = "d5e62ea6-ddf3-4d43-8e4c-ad5e6c8bfd7d"
