@@ -22,4 +22,14 @@ Connect to an openEO backend server:
 
 ```julia
 using OpenEOClient
+con = Connection("earthengine.openeo.org", "v1.0")
+list_processes(con)
+#67×1 DataFrame
+# Row │ id                           
+#     │ String                       
+#─────┼──────────────────────────────
+#   1 │ absolute
+#   2 │ add
+#   3 │ add_dimension
+#   4 │ aggregate_temporal_frequency
 ```
