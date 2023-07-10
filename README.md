@@ -9,6 +9,16 @@
 
 A Julia client for [openEO](https://openeo.org/) to access big Earth observation cloud back-ends in a simple and unified way. 
 
+## Important Note
+
+This project is currently under intensive development.
+The API is not considered stable yet.
+There may be errors in some outputs.
+We do not take any warranty for that.
+Please test this package with caution.
+Bug reports and feature requests are welcome.
+Please create a [new issue](https://github.com/Open-EO/openeo-julia-client/issues/new) for this.
+
 ## Get Started
 
 Install the package using:
