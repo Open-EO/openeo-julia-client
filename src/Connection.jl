@@ -18,9 +18,9 @@ end
 struct OpenIDConnection <: AuthorizedConnection
 end
 
-function fetch(url, method="GET")
+function fetch(url, method="GET", headers=[], kw...)
     try
-        response = HTTP.request(method, url)
+        response = HTTP.request(method, url, headers, kw...)
         response_dict = JSON.parse(String(response.body))
         return response_dict
     catch e
@@ -30,25 +30,15 @@ end
 
 function fetch(connection::AbstractConnection, path::String, method="GET")
     url = "https://$(connection.host)/$(connection.version)/$(path)"
-    try
-        response = HTTP.request(method, url)
-        response_dict = JSON.parse(String(response.body))
-        return response_dict
-    catch e
-        throw(ErrorException(e))
-    end
+    response = fetch(url, method)
+    return response
 end
 
 function fetch(connection::AuthorizedConnection, path::String, method="GET")
     url = "https://$(connection.host)/$(connection.version)/$(path)"
     headers = ["Authorization" => "Bearer basic//$(connection.access_token)"]
-    try
-        response = HTTP.request(method, url, headers=headers)
-        response_dict = JSON.parse(String(response.body))
-        return response_dict
-    catch e
-        throw(ErrorException(e))
-    end
+    response = fetch(url, method, headers)
+    return response
 end
 
 function Connection(host, version)
