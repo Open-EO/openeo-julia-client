@@ -4,7 +4,7 @@ CurrentModule = OpenEOClient
 
 # OpenEOClient
 
-Documentation for [OpenEOClient](https://github.com/danlooo/OpenEOClient.jl).
+Documentation for [OpenEOClient](https://github.com/Open-EO/openeo-julia-client).
 
 ```@index
 ```

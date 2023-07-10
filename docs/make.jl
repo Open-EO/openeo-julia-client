@@ -6,20 +6,20 @@ DocMeta.setdocmeta!(OpenEOClient, :DocTestSetup, :(using OpenEOClient); recursiv
 makedocs(;
     modules=[OpenEOClient],
     authors="Daniel Loos <dloos@bgc-jena.mpg.de> and contributors",
-    repo="https://github.com/danlooo/OpenEOClient.jl/blob/{commit}{path}#{line}",
+    repo="https://github.com/Open-EO/openeo-julia-client/blob/{commit}{path}#{line}",
     sitename="OpenEOClient.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://danlooo.github.io/OpenEOClient.jl",
+        canonical="https://open-eo.github.io/openeo-julia-client",
         edit_link="main",
-        assets=String[],
+        assets=String[]
     ),
     pages=[
         "Home" => "index.md",
-    ],
+    ]
 )
 
 deploydocs(;
-    repo="github.com/danlooo/OpenEOClient.jl",
-    devbranch="main",
+    repo="github.com/Open-EO/openeo-julia-client",
+    devbranch="main"
 )
