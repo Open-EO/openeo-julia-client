@@ -6,9 +6,9 @@ on:
     tags: ["*"]
   pull_request:
 env:
-  OPENEO_HOST: ${{ secrets.OPENEO_HOST }}
-  OPENEO_VERSION: ${{ secrets.OPENEO_VERSION }}
-  OPENEO_USERNAME: ${{ secrets.OPENEO_USERNAME }}
+  OPENEO_HOST: ${{ vars.OPENEO_HOST }}
+  OPENEO_VERSION: ${{ vars.OPENEO_VERSION }}
+  OPENEO_USERNAME: ${{ vars.OPENEO_USERNAME }}
   OPENEO_PASSWORD: ${{ secrets.OPENEO_PASSWORD }}
 concurrency:
   # Skip intermediate builds: always.
