@@ -1,6 +1,12 @@
 using OpenEOClient
 using Test
 
+host = ENV["OPENEO_HOST"]
+version = ENV["OPENEO_VERSION"]
+username = ENV["OPENEO_USERNAME"]
+passwod = ENV["OPENEO_PASSWORD"]
+
 @testset "OpenEOClient.jl" begin
-    # Write your tests here.
+    connection = Connection(host, username, password, version)
+    @test length(connection.access_token) > 0
 end

@@ -1,5 +1,6 @@
 module OpenEOClient
 
-# Write your package code here.
+include("Connection.jl")
 
+export Connection
 end
