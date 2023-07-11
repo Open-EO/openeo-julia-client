@@ -18,3 +18,12 @@ function list_jobs(connection::AuthorizedConnection)
     jobs = DataFrame(response["jobs"])
     return jobs
 end
+
+"""
+Lists available collections with at least the required information.
+"""
+function list_collections(connection::AbstractConnection)
+    response = fetch(connection, "collections")
+    jobs = DataFrame(response["collections"])
+    return jobs
+end

@@ -19,9 +19,11 @@ struct OpenIDConnection <: AuthorizedConnection
 end
 
 function fetch(url, method="GET", headers=[], kw...)
+    append!(headers, ["Accept" => "application/json"])
     try
         response = HTTP.request(method, url, headers, kw...)
-        response_dict = JSON.parse(String(response.body))
+        response_string = String(response.body)
+        response_dict = JSON.parse(response_string)
         return response_dict
     catch e
         throw(ErrorException(e))
@@ -41,11 +43,11 @@ function fetch(connection::AuthorizedConnection, path::String, method="GET")
     return response
 end
 
-function Connection(host, version)
+function connect(host, version)
     UnAuthorizedConnection(host, version)
 end
 
-function Connection(host, username::String, password::String, version::String)
+function connect(host, username::String, password::String, version::String)
     access_response = fetch("https://$(username):$(password)@$(host)/$(version)/credentials/basic")
     access_token = access_response["access_token"]
     BasicAuthConnection(host, version, access_token)

@@ -4,7 +4,8 @@ include("Connection.jl")
 include("API.jl")
 
 export
-    Connection,
+    connect,
+    list_collections,
     list_jobs,
     list_processes
 end
