@@ -24,6 +24,13 @@ Lists available collections with at least the required information.
 """
 function list_collections(connection::AbstractConnection)
     response = fetch(connection, "collections")
-    jobs = DataFrame(response["collections"])
-    return jobs
+    collections = DataFrame(response["collections"])
+    columns = filter(x -> x in names(collections), ["id", "title", "description", "deprecated"])
+    collections = select(collections, columns)
+    return collections
+end
+
+function load_collection(connection::AbstractConnection, id::String)
+    response = fetch(connection, "collections/$(id)")
+    return response
 end
