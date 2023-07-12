@@ -29,11 +29,17 @@ function list_collections(connection::AbstractConnection)
     return collections
 end
 
-function load_collection(connection::AbstractConnection, id::String)
+"""
+Lists all information about a specific collection specified by the identifier 
+"""
+function describe_collection(connection::AbstractConnection, id::String)
     response = fetch(connection, "collections/$(id)")
     return response
 end
 
+"""
+Process and download data synchronously
+"""
 function save_result(connection::AbstractConnection, process_graph::Dict{<:Any})
     query = Dict(
         "process" => Dict(

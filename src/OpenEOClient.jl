@@ -6,7 +6,7 @@ include("API.jl")
 export
     connect,
     list_collections,
-    load_collection,
+    describe_collection,
     list_jobs,
     list_processes,
     save_result

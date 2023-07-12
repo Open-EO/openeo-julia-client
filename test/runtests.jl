@@ -21,6 +21,9 @@ password = ENV["OPENEO_PASSWORD"]
     collections2 = list_collections(auth_con)
     @test size(collections1) == size(collections2)
 
+    collection = describe_collection(auth_con, "COPERNICUS/S2")
+    @test length(collection) == 17
+
     process_graph = JSON.parsefile("sentinel2-time-min.json")
     result = save_result(auth_con, process_graph)
     @test length(result.body) == 136148

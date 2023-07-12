@@ -1,3 +1,4 @@
 [deps]
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 OpenEOClient = "453781fe-a3c2-4c28-a19a-0c7c3d89805f"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
