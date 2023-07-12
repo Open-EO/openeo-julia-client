@@ -18,28 +18,33 @@ end
 struct OpenIDConnection <: AuthorizedConnection
 end
 
-function fetch(url, method="GET", headers=[], kw...)
-    append!(headers, ["Accept" => "application/json"])
-    try
-        response = HTTP.request(method, url, headers, kw...)
+const default_headers = [
+    "Accept" => "application/json",
+    "Content-Type" => "application/json"
+]
+
+function fetch(url, method="GET", headers=deepcopy(default_headers), kw...)
+    response = HTTP.request(method, url, headers, kw...)
+    response_type = Dict(response.headers)["Content-Type"]
+    if response_type == "application/json"
         response_string = String(response.body)
         response_dict = JSON.parse(response_string)
         return response_dict
-    catch e
-        throw(ErrorException(e))
+    else
+        return response
     end
 end
 
-function fetch(connection::AbstractConnection, path::String, method="GET")
+function fetch(connection::AbstractConnection, path::String, method="GET", headers=deepcopy(default_headers), kw...)
     url = "https://$(connection.host)/$(connection.version)/$(path)"
-    response = fetch(url, method)
+    response = fetch(url, method, headers, kw...)
     return response
 end
 
-function fetch(connection::AuthorizedConnection, path::String, method="GET")
+function fetch(connection::AuthorizedConnection, path::String, method="GET", headers=deepcopy(default_headers), kw...)
     url = "https://$(connection.host)/$(connection.version)/$(path)"
-    headers = ["Authorization" => "Bearer basic//$(connection.access_token)"]
-    response = fetch(url, method, headers)
+    append!(headers, ["Authorization" => "Bearer basic//$(connection.access_token)"])
+    response = fetch(url, method, headers, kw...)
     return response
 end
 

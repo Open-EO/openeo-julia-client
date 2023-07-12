@@ -8,5 +8,6 @@ export
     list_collections,
     load_collection,
     list_jobs,
-    list_processes
+    list_processes,
+    save_result
 end

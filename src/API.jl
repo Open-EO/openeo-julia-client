@@ -1,3 +1,4 @@
+using JSON
 using DataFrames
 
 """
@@ -5,9 +6,7 @@ Lists all predefined processes and returns detailed process descriptions, includ
 """
 function list_processes(connection::AbstractConnection)
     response = fetch(connection, "processes")
-    ids = [x["id"] for x in response["processes"]]
-    processes = DataFrame(id=ids)
-    return processes
+    return response["processes"]
 end
 
 """
@@ -32,5 +31,19 @@ end
 
 function load_collection(connection::AbstractConnection, id::String)
     response = fetch(connection, "collections/$(id)")
+    return response
+end
+
+function save_result(connection::AbstractConnection, process_graph::Dict{<:Any})
+    query = Dict(
+        "process" => Dict(
+            "process_graph" => process_graph
+        )
+    )
+    headers = [
+        "Accept" => "*",
+        "Content-Type" => "application/json"
+    ]
+    response = fetch(connection, "result", "POST", headers, json(query))
     return response
 end
