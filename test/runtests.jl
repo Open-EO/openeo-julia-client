@@ -7,9 +7,9 @@ username = ENV["OPENEO_USERNAME"]
 password = ENV["OPENEO_PASSWORD"]
 
 @testset "OpenEOClient.jl" begin
-    con = Connection(host, version)
+    con = connect(host, version)
 
-    auth_con = Connection(host, username, password, version)
+    auth_con = connect(host, username, password, version)
     @test length(auth_con.access_token) > 0
 
     processes1 = list_processes(con)
