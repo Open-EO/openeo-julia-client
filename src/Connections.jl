@@ -49,11 +49,13 @@ function fetch(connection::AuthorizedConnection, path::String, method="GET", hea
 end
 
 function connect(host, version)
-    UnAuthorizedConnection(host, version)
+    connection = UnAuthorizedConnection(host, version)
+    return connection
 end
 
 function connect(host, username::String, password::String, version::String)
     access_response = fetch("https://$(username):$(password)@$(host)/$(version)/credentials/basic")
     access_token = access_response["access_token"]
-    BasicAuthConnection(host, version, access_token)
+    connection = BasicAuthConnection(host, version, access_token)
+    return connection
 end

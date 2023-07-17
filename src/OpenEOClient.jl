@@ -1,6 +1,7 @@
 module OpenEOClient
 
-include("Connection.jl")
+include("Connections.jl")
+include("Processes.jl")
 include("API.jl")
 
 export
@@ -9,5 +10,8 @@ export
     describe_collection,
     list_jobs,
     list_processes,
+    register_processes,
+    Process,
+    Proccesses,
     save_result
 end
