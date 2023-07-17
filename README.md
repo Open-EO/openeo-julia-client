@@ -32,7 +32,7 @@ Connect to an openEO backend server:
 
 ```julia
 using OpenEOClient
-con = Connection("earthengine.openeo.org", "v1.0")
+con = connect("earthengine.openeo.org", "v1.0")
 list_processes(con)
 #67×1 DataFrame
 # Row │ id                           
