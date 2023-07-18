@@ -27,4 +27,11 @@ password = ENV["OPENEO_PASSWORD"]
     process_graph = JSON.parsefile("sentinel2-time-min.json")
     result = save_result(auth_con, process_graph)
     @test length(result.body) == 136148
+
+    step1 = Processes.load_collection(
+        "COPERNICUS/S2", (16.06, 48.06, 16.65, 48.35),
+        ["2020-01-20", "2020-01-30"], ["B10"]
+    )
+    @test step1.id == "load_collection"
+    @test Set(keys(step1.parameters)) == Set([:bands, :id, :spatial_extent, :temporal_extent])
 end
