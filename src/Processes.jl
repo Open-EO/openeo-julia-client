@@ -1,10 +1,9 @@
 using HTTP
 
-struct Process
+struct ProcessCall
     id::String
     parameters
 end
-
 
 keywords = [
     "begin", "while", "if", "for", "try", "return", "break", "continue",
@@ -33,8 +32,8 @@ function pretty_print(io, d::Dict, tabwidth=3)
     return nothing
 end
 
-function Base.show(io::IO, ::MIME"text/plain", p::Process)
-    println(io, "openEO Process $(p.id) with parameters:")
+function Base.show(io::IO, ::MIME"text/plain", p::ProcessCall)
+    println(io, "openEO ProcessCall $(p.id) with parameters:")
     pretty_print(io, p.parameters)
 end
 
@@ -95,7 +94,7 @@ function get_process_function(process_specs)
     $(doc_str)
     \"\"\"
     function $(process_specs.id)$(process_specs.id in keywords ? "_" : "")($args_str)
-        Process("$(process_specs.id)", Dict(($args_dict_str)))
+        ProcessCall("$(process_specs.id)", Dict(($args_dict_str)))
     end
     """
     return code
@@ -117,7 +116,7 @@ function register_processes(connection::AbstractConnection)
     # length(warnings) > 0 && @warn "Parsing of $(length(warnings)) processes failed")
 
     # wrap into a new module to avoid namespace issues
-    codes = append!(["module Processes", "import ..OpenEOClient: Process"], processes_codes, ["end"])
+    codes = append!(["module Processes", "import ..OpenEOClient: ProcessCall"], processes_codes, ["end"])
     code = join(codes, "\n")
 
     eval(Meta.parse(code))

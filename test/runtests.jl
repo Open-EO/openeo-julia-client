@@ -1,6 +1,6 @@
 using OpenEOClient
 using Test
-using JSON
+using JSON3
 
 host = ENV["OPENEO_HOST"]
 version = ENV["OPENEO_VERSION"]

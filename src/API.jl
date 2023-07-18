@@ -1,12 +1,13 @@
-using JSON
+using JSON3
 using DataFrames
+
 
 """
 Lists all predefined processes and returns detailed process descriptions, including parameters and return values.
 """
 function list_processes(connection::AbstractConnection)
     response = fetch(connection, "processes")
-    return response["processes"]
+    return response.processes
 end
 
 """

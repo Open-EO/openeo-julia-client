@@ -11,7 +11,7 @@ export
     list_jobs,
     list_processes,
     register_processes,
-    Process,
+    ProcessCall,
     Processes,
     save_result
 end
