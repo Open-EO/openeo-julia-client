@@ -5,6 +5,13 @@ struct Process
     parameters
 end
 
+
+keywords = [
+    "begin", "while", "if", "for", "try", "return", "break", "continue",
+    "function", "macro", "quote", "let", "local", "global", "const", "do",
+    "struct", "module", "baremodule", "using", "import", "export"
+]
+
 function pretty_print(io, d::Dict, tabwidth=3)
     d = Dict([String(k) => v for (k, v) in d]) # length of symbol is undefined
 
@@ -55,6 +62,7 @@ function get_parameters(parameters)
 
         if "subtype" in keys(schema) && schema["subtype"] in keys(openeo_types)
             openeo_type = schema["subtype"]
+            # TODO: can be multiple return types
         elseif "type" in keys(schema) && schema["type"] in keys(openeo_types)
             openeo_type = schema["type"]
         else
@@ -86,7 +94,7 @@ function get_process_function(process_specs::Dict)
     \"\"\"
     $(doc_str)
     \"\"\"
-    function $(process_specs["id"])$(process_specs["id"] == "if" && "_")($args_str)
+    function $(process_specs["id"])$(process_specs["id"] in keywords ? "_" : "")($args_str)
         Process("$(process_specs["id"])", Dict(($args_dict_str)))
     end
     """
