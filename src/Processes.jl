@@ -21,7 +21,7 @@ function pretty_print(io, d::Dict, tabwidth=3)
 
     max_pad = maximum([length(x) for x in keys(d)]) + 1
     for (k, v) in d
-        if typeof(v) <: Dict
+        if typeof(v) <: AbstractDict
             s = "$(k): "
             println(io, join(fill(" ", tabwidth)) * s)
             pretty_print(io, v, tabwidth + tabwidth)
