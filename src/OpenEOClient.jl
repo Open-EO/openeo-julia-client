@@ -12,6 +12,6 @@ export
     list_processes,
     register_processes,
     Process,
-    Proccesses,
+    Processes,
     save_result
 end

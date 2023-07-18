@@ -53,10 +53,12 @@ function get_parameters(parameters)
         schema = p["schema"]
         schema = typeof(schema) <: Vector ? schema[1] : schema
 
-        if "subtype" in keys(schema)
-            openeo_type = schema["subtype"] in keys(openeo_types) ? schema["subtype"] : schema["type"]
-        else
+        if "subtype" in keys(schema) && schema["subtype"] in keys(openeo_types)
+            openeo_type = schema["subtype"]
+        elseif "type" in keys(schema) && schema["type"] in keys(openeo_types)
             openeo_type = schema["type"]
+        else
+            openeo_type = "object"
         end
 
         if typeof(openeo_type) <: Vector
@@ -84,7 +86,7 @@ function get_process_function(process_specs::Dict)
     \"\"\"
     $(doc_str)
     \"\"\"
-    function $(process_specs["id"])($args_str)
+    function $(process_specs["id"])$(process_specs["id"] == "if" && "_")($args_str)
         Process("$(process_specs["id"])", Dict(($args_dict_str)))
     end
     """
@@ -109,5 +111,6 @@ function register_processes(connection::AbstractConnection)
     # wrap into a new module to avoid namespace issues
     codes = append!(["module Processes", "import ..OpenEOClient: Process"], processes_codes, ["end"])
     code = join(codes, "\n")
+
     eval(Meta.parse(code))
 end
