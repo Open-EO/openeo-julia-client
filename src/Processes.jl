@@ -81,12 +81,12 @@ function get_parameters(parameters)
     return res
 end
 
-function get_process_function(process_specs::Dict)
+function get_process_function(process_specs)
     parameters = get_parameters(process_specs["parameters"])
     args_str = join(["$(k)::$(v)" for (k, v) in parameters], ", ")
     args_dict_str = join([":$k=>$k" for (k, v) in parameters], ", ")
     docs = [
-        "    $(process_specs["id"])($(args_str)) -> Process",
+        "    $(process_specs.id)($(args_str)) -> Process",
         process_specs["description"]
     ]
     doc_str = join(docs, "\n\n")
@@ -94,8 +94,8 @@ function get_process_function(process_specs::Dict)
     \"\"\"
     $(doc_str)
     \"\"\"
-    function $(process_specs["id"])$(process_specs["id"] in keywords ? "_" : "")($args_str)
-        Process("$(process_specs["id"])", Dict(($args_dict_str)))
+    function $(process_specs.id)$(process_specs.id in keywords ? "_" : "")($args_str)
+        Process("$(process_specs.id)", Dict(($args_dict_str)))
     end
     """
     return code
@@ -114,7 +114,7 @@ function register_processes(connection::AbstractConnection)
         end
     end
 
-    length(warnings) > 0 && @warn "Parsing of $(length(warnings)) processes failed:\n" * join(warnings, "\n")
+    # length(warnings) > 0 && @warn "Parsing of $(length(warnings)) processes failed")
 
     # wrap into a new module to avoid namespace issues
     codes = append!(["module Processes", "import ..OpenEOClient: Process"], processes_codes, ["end"])

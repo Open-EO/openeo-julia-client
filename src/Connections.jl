@@ -1,5 +1,5 @@
 using HTTP
-using JSON
+using JSON3
 
 abstract type AbstractConnection end
 abstract type AuthorizedConnection <: AbstractConnection end
@@ -28,7 +28,7 @@ function fetch(url, method="GET", headers=deepcopy(default_headers), kw...)
     response_type = Dict(response.headers)["Content-Type"]
     if response_type == "application/json"
         response_string = String(response.body)
-        response_dict = JSON.parse(response_string)
+        response_dict = JSON3.read(response_string)
         return response_dict
     else
         return response
