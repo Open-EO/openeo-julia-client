@@ -28,18 +28,18 @@ using Pkg
 Pkg.add(url="https://github.com/Open-EO/openeo-julia-client.git")
 ```
 
-Connect to an openEO backend server:
+Connect to an openEO backend server and load a collection:
 
 ```julia
 using OpenEOClient
-con = connect("earthengine.openeo.org", "v1.0")
-list_processes(con)
-#67×1 DataFrame
-# Row │ id                           
-#     │ String                       
-#─────┼──────────────────────────────
-#   1 │ absolute
-#   2 │ add
-#   3 │ add_dimension
-#   4 │ aggregate_temporal_frequency
+connection = connect("earthengine.openeo.org", "v1.0")
+connection.load_collection(
+    "COPERNICUS/S2", (16.06, 48.06, 16.65, 48.35),
+    ["2020-01-20", "2020-01-30"], ["B10"]
+)
+# openEO ProcessCall load_collection with parameters:
+#    bands:           ["B10"]
+#    spatial_extent:  (16.06, 48.06, 16.65, 48.35)
+#    id:              "COPERNICUS/S2"
+#    temporal_extent: ["2020-01-20", "2020-01-30"]
 ```
