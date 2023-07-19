@@ -1,6 +1,6 @@
 using OpenEOClient
 using Test
-using JSON
+using JSON3
 
 host = ENV["OPENEO_HOST"]
 version = ENV["OPENEO_VERSION"]
@@ -8,23 +8,21 @@ username = ENV["OPENEO_USERNAME"]
 password = ENV["OPENEO_PASSWORD"]
 
 @testset "OpenEOClient.jl" begin
-    con = connect(host, version)
+    unauth_con = OpenEOClient.UnAuthorizedConnection(host, version)
+    response = OpenEOClient.fetchApi(unauth_con, "/")
+    @test :api_version in keys(response)
+    @test :backend_version in keys(response)
 
-    auth_con = connect(host, username, password, version)
-    @test length(auth_con.access_token) > 0
+    c1 = connect(host, version)
+    c2 = connect(host, version, username, password)
+    @test allequal([c1, c2] .|> x -> size(x.collections))
+    @test allequal([c1, c2] .|> x -> names(x, all=true) |> length)
 
-    processes1 = list_processes(con)
-    processes2 = list_processes(auth_con)
-    @test size(processes1) == size(processes2)
-
-    collections1 = list_collections(con)
-    collections2 = list_collections(auth_con)
-    @test size(collections1) == size(collections2)
-
-    collection = describe_collection(auth_con, "COPERNICUS/S2")
-    @test length(collection) == 17
-
-    process_graph = JSON.parsefile("sentinel2-time-min.json")
-    result = save_result(auth_con, process_graph)
-    @test length(result.body) == 136148
+    step1 = c1.load_collection(
+        "COPERNICUS/S2", (16.06, 48.06, 16.65, 48.35),
+        ["2020-01-20", "2020-01-30"], ["B10"]
+    )
+    @test step1.id == "load_collection"
+    @test Set(keys(step1.parameters)) == Set([:bands, :id, :spatial_extent, :temporal_extent])
+    @test step1.parameters[:bands] == ["B10"]
 end
