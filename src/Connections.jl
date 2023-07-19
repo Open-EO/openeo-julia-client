@@ -25,28 +25,28 @@ const default_headers = [
 
 n_existing_connections = 0
 
-function fetchApi(url, method="GET", headers=deepcopy(default_headers), kw...)
-    response = HTTP.request(method, url, headers, kw...)
+function fetchApi(url; method="GET", headers=deepcopy(default_headers), output_type::Type=Any, kw...)
+    response = HTTP.request(method, url, headers)
     response_type = Dict(response.headers)["Content-Type"]
     if response_type == "application/json"
         response_string = String(response.body)
-        response_dict = JSON3.read(response_string)
-        return response_dict
+        response_converted = JSON3.read(response_string, output_type)
+        return response_converted
     else
         return response
     end
 end
 
-function fetchApi(connection::AbstractConnection, path::String, method="GET", headers=deepcopy(default_headers), kw...)
+function fetchApi(connection::AbstractConnection, path::String; kw...)
     url = "https://$(connection.host)/$(connection.version)/$(path)"
-    response = fetchApi(url, method, headers, kw...)
+    response = fetchApi(url; kw...)
     return response
 end
 
-function fetchApi(connection::AuthorizedConnection, path::String, method="GET", headers=deepcopy(default_headers), kw...)
+function fetchApi(connection::AuthorizedConnection, path::String; headers=deepcopy(default_headers), kw...)
     url = "https://$(connection.host)/$(connection.version)/$(path)"
     append!(headers, ["Authorization" => "Bearer basic//$(connection.access_token)"])
-    response = fetchApi(url, method, headers, kw...)
+    response = fetchApi(url; headers=headers, kw...)
     return response
 end
 
