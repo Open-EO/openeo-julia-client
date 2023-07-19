@@ -9,8 +9,8 @@ password = ENV["OPENEO_PASSWORD"]
 @testset "OpenEOClient.jl" begin
     unauth_con = OpenEOClient.UnAuthorizedConnection(host, version)
     response = OpenEOClient.fetchApi(unauth_con, "/")
-    @test :api_version in keys(response)
-    @test :backend_version in keys(response)
+    @test "api_version" in keys(response)
+    @test "backend_version" in keys(response)
 
     c1 = connect(host, version)
     c2 = connect(host, version, username, password)
