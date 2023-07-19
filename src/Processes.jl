@@ -11,9 +11,7 @@ keywords = [
     "struct", "module", "baremodule", "using", "import", "export"
 ]
 
-function pretty_print(io, d::Dict, tabwidth=3)
-    d = Dict([String(k) => v for (k, v) in d]) # length of symbol is undefined
-
+function pretty_print(io, d::AbstractDict, tabwidth=3)
     if length(d) == 0
         println(io, join(fill(" ", tabwidth)) * "No parameters specified.")
         return
@@ -53,10 +51,10 @@ function get_parameters(parameters)
 
     res = [] # result must be ordered
     for p in parameters
-        name = Symbol(p["name"])
+        name = Symbol(p.name)
         # implement first method of function
         # TODO: Multiple dispatch on other methods
-        schema = p["schema"]
+        schema = p.schema
         schema = typeof(schema) <: Vector ? schema[1] : schema
 
         if "subtype" in keys(schema) && schema["subtype"] in keys(openeo_types)
@@ -81,12 +79,12 @@ function get_parameters(parameters)
 end
 
 function get_process_function(process_specs)
-    parameters = get_parameters(process_specs["parameters"])
+    parameters = get_parameters(process_specs.parameters)
     args_str = join(["$(k)::$(v)" for (k, v) in parameters], ", ")
     args_dict_str = join([":$k=>$k" for (k, v) in parameters], ", ")
     docs = [
         "    $(process_specs.id)($(args_str)) -> Process",
-        process_specs["description"]
+        process_specs.description
     ]
     doc_str = join(docs, "\n\n")
     code = """
@@ -110,7 +108,7 @@ function get_processes_code(host, version)
             code = get_process_function(process)
             append!(processes_codes, [code])
         catch e
-            append!(warnings, [(process["id"] => e)])
+            append!(warnings, [(process.id => e)])
         end
     end
     code = join(processes_codes, "\n")

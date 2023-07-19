@@ -5,7 +5,7 @@ using DataFrames
 Lists all predefined processes and returns detailed process descriptions, including parameters and return values.
 """
 function list_processes(connection::AbstractConnection)
-    response = fetchApi(connection, "processes")
+    response = fetchApi(connection, "processes"; output_type=OpenEOApiTypes.ProcessesRoot)
     return response.processes
 end
 
@@ -14,7 +14,7 @@ Lists all batch jobs submitted by a user.
 """
 function list_jobs(connection::AuthorizedConnection)
     response = fetchApi(connection, "jobs")
-    jobs = DataFrame(response["jobs"])
+    jobs = response["jobs"]
     return jobs
 end
 
@@ -22,10 +22,8 @@ end
 Lists available collections with at least the required information.
 """
 function list_collections(connection::AbstractConnection)
-    response = fetchApi(connection, "collections")
-    collections = DataFrame(response["collections"])
-    columns = filter(x -> x in names(collections), ["id", "title", "description", "deprecated"])
-    collections = select(collections, columns)
+    response = fetchApi(connection, "collections"; output_type=OpenEOApiTypes.CollectionsRoot)
+    collections = response.collections
     return collections
 end
 
