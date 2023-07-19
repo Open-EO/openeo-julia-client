@@ -23,7 +23,9 @@ const default_headers = [
     "Content-Type" => "application/json"
 ]
 
-function fetch(url, method="GET", headers=deepcopy(default_headers), kw...)
+n_existing_connections = 0
+
+function fetchApi(url, method="GET", headers=deepcopy(default_headers), kw...)
     response = HTTP.request(method, url, headers, kw...)
     response_type = Dict(response.headers)["Content-Type"]
     if response_type == "application/json"
@@ -35,29 +37,49 @@ function fetch(url, method="GET", headers=deepcopy(default_headers), kw...)
     end
 end
 
-function fetch(connection::AbstractConnection, path::String, method="GET", headers=deepcopy(default_headers), kw...)
+function fetchApi(connection::AbstractConnection, path::String, method="GET", headers=deepcopy(default_headers), kw...)
     url = "https://$(connection.host)/$(connection.version)/$(path)"
-    response = fetch(url, method, headers, kw...)
+    response = fetchApi(url, method, headers, kw...)
     return response
 end
 
-function fetch(connection::AuthorizedConnection, path::String, method="GET", headers=deepcopy(default_headers), kw...)
+function fetchApi(connection::AuthorizedConnection, path::String, method="GET", headers=deepcopy(default_headers), kw...)
     url = "https://$(connection.host)/$(connection.version)/$(path)"
     append!(headers, ["Authorization" => "Bearer basic//$(connection.access_token)"])
-    response = fetch(url, method, headers, kw...)
+    response = fetchApi(url, method, headers, kw...)
     return response
 end
 
 function connect(host, version)
-    connection = UnAuthorizedConnection(host, version)
-    register_processes(connection)
-    return connection
+    processes_code = get_processes_code(host, version)
+    global n_existing_connections += 1
+    module_str = """
+    module Connection$(n_existing_connections)
+        using OpenEOClient
+        const connection = OpenEOClient.UnAuthorizedConnection("$host", "$version")
+        const collections = OpenEOClient.list_collections(connection)
+
+        $processes_code
+    end
+    """
+
+    eval(Meta.parse(module_str))
 end
 
-function connect(host, username::String, password::String, version::String)
-    access_response = fetch("https://$(username):$(password)@$(host)/$(version)/credentials/basic")
+function connect(host, version::String, username::String, password::String)
+    access_response = fetchApi("https://$(username):$(password)@$(host)/$(version)/credentials/basic")
     access_token = access_response["access_token"]
-    connection = BasicAuthConnection(host, version, access_token)
-    register_processes(connection)
-    return connection
+
+    processes_code = get_processes_code(host, version)
+    global n_existing_connections += 1
+    module_str = """
+    module Connection$(n_existing_connections)
+        using OpenEOClient
+        const connection = OpenEOClient.BasicAuthConnection("$host", "$version", "$access_token")
+        const collections = OpenEOClient.list_collections(connection)
+
+        $processes_code
+    end
+    """
+    eval(Meta.parse(module_str))
 end

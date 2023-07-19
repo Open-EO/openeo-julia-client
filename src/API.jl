@@ -5,7 +5,7 @@ using DataFrames
 Lists all predefined processes and returns detailed process descriptions, including parameters and return values.
 """
 function list_processes(connection::AbstractConnection)
-    response = fetch(connection, "processes")
+    response = fetchApi(connection, "processes")
     return response.processes
 end
 
@@ -13,7 +13,7 @@ end
 Lists all batch jobs submitted by a user.
 """
 function list_jobs(connection::AuthorizedConnection)
-    response = fetch(connection, "jobs")
+    response = fetchApi(connection, "jobs")
     jobs = DataFrame(response["jobs"])
     return jobs
 end
@@ -22,7 +22,7 @@ end
 Lists available collections with at least the required information.
 """
 function list_collections(connection::AbstractConnection)
-    response = fetch(connection, "collections")
+    response = fetchApi(connection, "collections")
     collections = DataFrame(response["collections"])
     columns = filter(x -> x in names(collections), ["id", "title", "description", "deprecated"])
     collections = select(collections, columns)
@@ -33,7 +33,7 @@ end
 Lists all information about a specific collection specified by the identifier 
 """
 function describe_collection(connection::AbstractConnection, id::String)
-    response = fetch(connection, "collections/$(id)")
+    response = fetchApi(connection, "collections/$(id)")
     return response
 end
 
@@ -50,6 +50,6 @@ function save_result(connection::AbstractConnection, process_graph::Dict{<:Any})
         "Accept" => "*",
         "Content-Type" => "application/json"
     ]
-    response = fetch(connection, "result", "POST", headers, json(query))
+    response = fetchApi(connection, "result", "POST", headers, json(query))
     return response
 end

@@ -100,24 +100,19 @@ function get_process_function(process_specs)
     return code
 end
 
-function register_processes(connection::AbstractConnection)
+function get_processes_code(host, version)
+    connection = UnAuthorizedConnection(host, version)
     processes = list_processes(connection)
     processes_codes = []
     warnings = []
-    for process_spec in processes
+    for process in processes
         try
-            code = get_process_function(process_spec)
+            code = get_process_function(process)
             append!(processes_codes, [code])
         catch e
-            append!(warnings, [(process_spec["id"] => e)])
+            append!(warnings, [(process["id"] => e)])
         end
     end
-
-    # length(warnings) > 0 && @warn "Parsing of $(length(warnings)) processes failed")
-
-    # wrap into a new module to avoid namespace issues
-    codes = append!(["module Processes", "import ..OpenEOClient: ProcessCall"], processes_codes, ["end"])
-    code = join(codes, "\n")
-
-    eval(Meta.parse(code))
+    code = join(processes_codes, "\n")
+    return code
 end
