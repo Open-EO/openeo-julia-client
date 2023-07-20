@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - main
-      - '**develop'
+      - danlooo/develop
     tags: ["*"]
   pull_request:
 env:
