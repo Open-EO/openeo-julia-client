@@ -80,7 +80,8 @@ function get_parameters(parameters)
         "null" => Nothing,
         "array" => Vector,
         # subtypes
-        "bounding-box" => NTuple{4,<:Number}
+        "bounding-box" => NTuple{4,<:Number},
+        "raster-cube" => ProcessCall
     )
 
     res = [] # result must be ordered
@@ -112,26 +113,6 @@ function get_parameters(parameters)
     return res
 end
 
-function get_process_function(process_specs)
-    parameters = get_parameters(process_specs.parameters)
-    args_str = join(["$(k)::$(v)" for (k, v) in parameters], ", ")
-    args_dict_str = join([":$k=>$k" for (k, v) in parameters], ", ")
-    docs = [
-        "    $(process_specs.id)($(args_str)) -> Process",
-        process_specs.description
-    ]
-    doc_str = join(docs, "\n\n")
-    code = """
-    \"\"\"
-    $(doc_str)
-    \"\"\"
-    function $(process_specs.id)$(process_specs.id in keywords ? "_" : "")($args_str)
-        ProcessCall("$(process_specs.id)", Dict(($args_dict_str)))
-    end
-    """
-    return code
-end
-
 function get_processes_code(host, version)
     connection = UnAuthorizedConnection(host, version)
     processes = list_processes(connection)
@@ -139,7 +120,22 @@ function get_processes_code(host, version)
     warnings = []
     for process in processes
         try
-            code = get_process_function(process)
+            parameters = get_parameters(process.parameters)
+            args_str = join(["$(k)::$(v)" for (k, v) in parameters], ", ")
+            args_dict_str = join([":$k=>$k" for (k, v) in parameters], ", ")
+            docs = [
+                "    $(process.id)($(args_str))",
+                process.description
+            ]
+            doc_str = join(docs, "\n\n")
+            code = """
+            \"\"\"
+            $(doc_str)
+            \"\"\"
+            function $(process.id)$(process.id in keywords ? "_" : "")($args_str)
+                ProcessCall("$(process.id)", Dict(($args_dict_str)))
+            end
+            """
             append!(processes_codes, [code])
         catch e
             append!(warnings, [(process.id => e)])
