@@ -1,4 +1,38 @@
 using HTTP
+import StructTypes
+
+struct ProcessParameter
+    name::String
+    description::String
+    schema::Any
+    default::Union{Nothing,Any}
+    optional::Union{Nothing,Bool}
+    deprecated::Union{Nothing,Bool}
+    experimental::Union{Nothing,Bool}
+end
+StructTypes.StructType(::Type{ProcessParameter}) = StructTypes.Struct()
+
+struct Process
+    id::String
+    summary::String
+    description::String
+    categories::Vector{String}
+    parameters::Vector{ProcessParameter}
+    returns::Any
+    examples::Union{Nothing,Vector{Any}}
+    links::Union{Nothing,Vector{Any}}
+    exceptions::Any
+    experimental::Union{Nothing,Bool}
+end
+StructTypes.StructType(::Type{Process}) = StructTypes.Struct()
+
+# root e.g. https://earthengine.openeo.org/v1.0/processes
+struct ProcessesRoot
+    processes::Vector{Process}
+    links::Vector{Any}
+end
+
+StructTypes.StructType(::Type{ProcessesRoot}) = StructTypes.Struct()
 
 struct ProcessCall
     id::String

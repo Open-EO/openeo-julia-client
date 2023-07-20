@@ -5,7 +5,7 @@ using DataFrames
 Lists all predefined processes and returns detailed process descriptions, including parameters and return values.
 """
 function list_processes(connection::AbstractConnection)
-    response = fetchApi(connection, "processes"; output_type=OpenEOApiTypes.ProcessesRoot)
+    response = fetchApi(connection, "processes"; output_type=ProcessesRoot)
     return response.processes
 end
 
@@ -22,7 +22,7 @@ end
 Lists available collections with at least the required information.
 """
 function list_collections(connection::AbstractConnection)
-    response = fetchApi(connection, "collections"; output_type=OpenEOApiTypes.CollectionsRoot)
+    response = fetchApi(connection, "collections"; output_type=CollectionsRoot)
     collections = response.collections
     return collections
 end

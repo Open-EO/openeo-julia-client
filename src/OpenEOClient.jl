@@ -1,8 +1,8 @@
 module OpenEOClient
 
-include("OpenEOApiTypes.jl")
 include("Connections.jl")
 include("Processes.jl")
+include("Collections.jl")
 include("API.jl")
 
 export
