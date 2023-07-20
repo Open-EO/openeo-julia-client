@@ -51,14 +51,14 @@ function pretty_print(io, d::AbstractDict, tabwidth=3)
         return
     end
 
-    max_pad = maximum([length(x) for x in keys(d)]) + 1
+    max_pad = maximum([length(String(x)) for x in keys(d)]) + 1
     for (k, v) in d
         if typeof(v) <: AbstractDict
             s = "$(k): "
             println(io, join(fill(" ", tabwidth)) * s)
             pretty_print(io, v, tabwidth + tabwidth)
         else
-            println(io, join(fill(" ", tabwidth)) * "$(rpad(k*":", max_pad)) $(repr(v))")
+            println(io, join(fill(" ", tabwidth)) * "$(rpad(String(k)*":", max_pad)) $(repr(v))")
         end
     end
     return nothing
