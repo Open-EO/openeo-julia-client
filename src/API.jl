@@ -38,16 +38,24 @@ end
 """
 Process and download data synchronously
 """
-function save_result(connection::AbstractConnection, process_graph::Dict{<:Any})
+function save_result(connection::AbstractConnection, process_graph::AbstractDict, filepath::String="")
     query = Dict(
         "process" => Dict(
-            "process_graph" => process_graph
+            "process_graph" => Dict(process_graph)
         )
     )
+
     headers = [
         "Accept" => "*",
         "Content-Type" => "application/json"
     ]
-    response = fetchApi(connection, "result", "POST", headers, json(query))
-    return response
+    response = fetchApi(connection, "result"; method="POST", headers=headers, body=JSON3.write(query))
+
+    if isempty(filepath)
+        file_extension = split(Dict(response.headers)["Content-Type"], "/")[2]
+        filepath = "out." * file_extension
+    end
+
+    write(open(filepath, "w"), response.body)
+    return filepath
 end

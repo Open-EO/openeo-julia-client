@@ -25,8 +25,8 @@ const default_headers = [
 
 n_existing_connections = 0
 
-function fetchApi(url; method="GET", headers=deepcopy(default_headers), output_type::Type=Any, kw...)
-    response = HTTP.request(method, url, headers)
+function fetchApi(url; method="GET", headers=deepcopy(default_headers), output_type::Type=Any, body::String="", kw...)
+    response = HTTP.request(method, url, headers, body; kw...)
     response_type = Dict(response.headers)["Content-Type"]
     if response_type == "application/json"
         response_string = String(response.body)
