@@ -44,8 +44,6 @@ struct ProcessCall
     parameters
 end
 
-Symbol(p::ProcessCall) = Symbol("$(p.id)-$(p |> repr |> objectid |> base64encode)")
-
 keywords = [
     "begin", "while", "if", "for", "try", "return", "break", "continue",
     "function", "macro", "quote", "let", "local", "global", "const", "do",
@@ -150,6 +148,6 @@ function get_processes_code(host, version)
         end
     end
     code = join(processes_codes, "\n")
-    @warn join(warnings, "\n")
+    length(warnings) > 0 && @warn join(warnings, "\n")
     return code
 end

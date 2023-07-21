@@ -1,18 +1,21 @@
+get_id(p::ProcessCall) = Symbol("$(p.id)-$(p |> repr |> objectid |> base64encode)")
+
 """
 Process and download data synchronously
 """
-function compute_result(connection::AbstractConnection, step2::ProcessCall, kw...)
+function compute_result(connection::AbstractConnection, process_call::ProcessCall, filepath::String="", kw...)
+    step2 = deepcopy(process_call)
     step1 = step2.parameters[:data]
-    step2.parameters[:data] = Dict(:from_node => Symbol(step1))
+    step2.parameters[:data] = Dict(:from_node => get_id(step1))
 
     query = Dict(
         :process => Dict(
             :process_graph => Dict(
-                Symbol(step1) => Dict(
+                get_id(step1) => Dict(
                     :process_id => step1.id,
                     :arguments => step1.parameters
                 ),
-                Symbol(step2) => Dict(
+                get_id(step2) => Dict(
                     :process_id => step2.id,
                     :arguments => step2.parameters,
                     :result => true
@@ -20,8 +23,6 @@ function compute_result(connection::AbstractConnection, step2::ProcessCall, kw..
             )
         )
     )
-
-    @info query |> JSON3.write |> JSON3.read |> JSON3.pretty
 
     headers = [
         "Accept" => "*",
