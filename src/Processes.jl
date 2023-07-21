@@ -1,5 +1,6 @@
 using HTTP
 import StructTypes
+import Base64: base64encode
 
 struct ProcessParameter
     name::String
@@ -14,7 +15,7 @@ StructTypes.StructType(::Type{ProcessParameter}) = StructTypes.Struct()
 
 struct Process
     id::String
-    summary::String
+    summary::Union{Nothing,String}
     description::String
     categories::Vector{String}
     parameters::Vector{ProcessParameter}
@@ -25,6 +26,10 @@ struct Process
     experimental::Union{Nothing,Bool}
 end
 StructTypes.StructType(::Type{Process}) = StructTypes.Struct()
+
+function Base.show(io::IO, ::MIME"text/plain", p::Process)
+    print(io, "$(p.id)($(join([x.name for x in p.parameters], ", "))): $(p.summary)")
+end
 
 # root e.g. https://earthengine.openeo.org/v1.0/processes
 struct ProcessesRoot
@@ -38,6 +43,8 @@ struct ProcessCall
     id::String
     parameters
 end
+
+Symbol(p::ProcessCall) = Symbol("$(p.id)-$(p |> repr |> objectid |> base64encode)")
 
 keywords = [
     "begin", "while", "if", "for", "try", "return", "break", "continue",
@@ -64,6 +71,7 @@ function pretty_print(io, d::AbstractDict, tabwidth=3)
     return nothing
 end
 
+
 function Base.show(io::IO, ::MIME"text/plain", p::ProcessCall)
     println(io, "openEO ProcessCall $(p.id) with parameters:")
     pretty_print(io, p.parameters)
@@ -80,7 +88,7 @@ function get_parameters(parameters)
         "null" => Nothing,
         "array" => Vector,
         # subtypes
-        "bounding-box" => NTuple{4,<:Number},
+        "bounding-box" => BoundingBox,
         "raster-cube" => ProcessCall
     )
 
@@ -142,5 +150,6 @@ function get_processes_code(host, version)
         end
     end
     code = join(processes_codes, "\n")
+    @warn join(warnings, "\n")
     return code
 end

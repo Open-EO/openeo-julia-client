@@ -2,6 +2,7 @@ module OpenEOClient
 
 include("Connections.jl")
 include("Processes.jl")
+include("ProcessGraph.jl")
 include("Collections.jl")
 include("API.jl")
 
@@ -14,5 +15,6 @@ export
     register_processes,
     ProcessCall,
     Processes,
-    save_result
+    BoundingBox,
+    compute_result
 end

@@ -12,12 +12,15 @@ password = ENV["OPENEO_PASSWORD"]
     @test "api_version" in keys(response)
     @test "backend_version" in keys(response)
 
+    list_processes(unauth_con)
+    list_collections(unauth_con)
+
     c1 = connect(host, version)
     c2 = connect(host, version, username, password)
     @test allequal([c1, c2] .|> x -> size(x.collections))
     @test allequal([c1, c2] .|> x -> names(x, all=true) |> length)
 
-    step1 = c1.load_collection(
+    step1 = c2.load_collection(
         "COPERNICUS/S2", (16.06, 48.06, 16.65, 48.35),
         ["2020-01-20", "2020-01-30"], ["B10"]
     )

@@ -35,27 +35,10 @@ function describe_collection(connection::AbstractConnection, id::String)
     return response
 end
 
-"""
-Process and download data synchronously
-"""
-function save_result(connection::AbstractConnection, process_graph::AbstractDict, filepath::String="")
-    query = Dict(
-        "process" => Dict(
-            "process_graph" => Dict(process_graph)
-        )
-    )
-
-    headers = [
-        "Accept" => "*",
-        "Content-Type" => "application/json"
-    ]
-    response = fetchApi(connection, "result"; method="POST", headers=headers, body=JSON3.write(query))
-
-    if isempty(filepath)
-        file_extension = split(Dict(response.headers)["Content-Type"], "/")[2]
-        filepath = "out." * file_extension
-    end
-
-    write(open(filepath, "w"), response.body)
-    return filepath
+Base.@kwdef struct BoundingBox{T<:Real}
+    west::T
+    south::T
+    east::T
+    north::T
 end
+StructTypes.StructType(::Type{BoundingBox}) = StructTypes.Struct()
