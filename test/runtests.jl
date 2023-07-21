@@ -21,7 +21,7 @@ password = ENV["OPENEO_PASSWORD"]
     @test allequal([c1, c2] .|> x -> names(x, all=true) |> length)
 
     step1 = c2.load_collection(
-        "COPERNICUS/S2", (16.06, 48.06, 16.65, 48.35),
+        "COPERNICUS/S2", BoundingBox(west=16.06, south=48.06, east=16.65, north=48.35),
         ["2020-01-20", "2020-01-30"], ["B10"]
     )
     @test step1.id == "load_collection"
