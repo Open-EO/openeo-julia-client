@@ -1,11 +1,10 @@
 using JSON3
-using DataFrames
 
 """
 Lists all predefined processes and returns detailed process descriptions, including parameters and return values.
 """
 function list_processes(connection::AbstractConnection)
-    response = fetchApi(connection, "processes"; output_type=OpenEOApiTypes.ProcessesRoot)
+    response = fetchApi(connection, "processes"; output_type=ProcessesRoot)
     return response.processes
 end
 
@@ -22,7 +21,7 @@ end
 Lists available collections with at least the required information.
 """
 function list_collections(connection::AbstractConnection)
-    response = fetchApi(connection, "collections"; output_type=OpenEOApiTypes.CollectionsRoot)
+    response = fetchApi(connection, "collections"; output_type=CollectionsRoot)
     collections = response.collections
     return collections
 end
@@ -35,19 +34,10 @@ function describe_collection(connection::AbstractConnection, id::String)
     return response
 end
 
-"""
-Process and download data synchronously
-"""
-function save_result(connection::AbstractConnection, process_graph::Dict{<:Any})
-    query = Dict(
-        "process" => Dict(
-            "process_graph" => process_graph
-        )
-    )
-    headers = [
-        "Accept" => "*",
-        "Content-Type" => "application/json"
-    ]
-    response = fetchApi(connection, "result", "POST", headers, json(query))
-    return response
+Base.@kwdef struct BoundingBox{T<:Real}
+    west::T
+    south::T
+    east::T
+    north::T
 end
+StructTypes.StructType(::Type{BoundingBox}) = StructTypes.Struct()
