@@ -39,9 +39,21 @@ end
 
 StructTypes.StructType(::Type{ProcessesRoot}) = StructTypes.Struct()
 
-struct ProcessCall
+abstract type AbstractProcessCall end
+
+struct ProcessCallReference <: AbstractProcessCall
+    from_node::String
+end
+
+struct ProcessCall <: AbstractProcessCall
     id::String
-    parameters
+    process_id::String
+    parameters::Dict{Symbol,Any}
+end
+
+function ProcessCall(process_id::String, parameters)
+    id = (process_id, parameters) |> repr |> objectid |> base64encode |> x -> process_id * "_" * x
+    ProcessCall(id, process_id, parameters)
 end
 
 keywords = [
@@ -139,7 +151,7 @@ function get_processes_code(host, version)
             $(doc_str)
             \"\"\"
             function $(process.id)$(process.id in keywords ? "_" : "")($args_str)
-                ProcessCall("$(process.id)", Dict(($args_dict_str)))
+                ProcessCall("$(process.id)", Dict{Symbol, Any}(($args_dict_str)))
             end
             """
             append!(processes_codes, [code])
