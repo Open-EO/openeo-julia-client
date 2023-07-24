@@ -29,7 +29,7 @@ password = ENV["OPENEO_PASSWORD"]
     @test Set(keys(step1.arguments)) == Set([:bands, :id, :spatial_extent, :temporal_extent])
     @test step1.arguments[:bands] == ["B10"]
 
-    step2 = c.save_result(step1, "GTIFF-ZIP", Dict())
-    result = compute_result(c.connection, step2)
+    step2 = c2.save_result(step1, "GTIFF-ZIP", Dict())
+    result = compute_result(c2.connection, step2)
     @test result == "out.zip"
 end
