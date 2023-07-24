@@ -24,7 +24,12 @@ password = ENV["OPENEO_PASSWORD"]
         "COPERNICUS/S2", BoundingBox(west=16.06, south=48.06, east=16.65, north=48.35),
         ["2020-01-20", "2020-01-30"], ["B10"]
     )
-    @test step1.id == "load_collection"
+    @test step1.id == "load_collection_tQ79zrFEGi8="
+    @test step1.process_id == "load_collection"
     @test Set(keys(step1.parameters)) == Set([:bands, :id, :spatial_extent, :temporal_extent])
     @test step1.parameters[:bands] == ["B10"]
+
+    step2 = c.save_result(step1, "GTIFF-ZIP", Dict())
+    result = compute_result(c.connection, step2)
+    @test result == "out.zip"
 end

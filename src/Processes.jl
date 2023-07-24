@@ -39,21 +39,23 @@ end
 
 StructTypes.StructType(::Type{ProcessesRoot}) = StructTypes.Struct()
 
-abstract type AbstractProcessCall end
+abstract type AbstractProcessNode end
 
-struct ProcessCallReference <: AbstractProcessCall
+struct ProcessNodeReference <: AbstractProcessNode
     from_node::String
 end
 
-struct ProcessCall <: AbstractProcessCall
+struct ProcessNode <: AbstractProcessNode
     id::String
     process_id::String
-    parameters::Dict{Symbol,Any}
+    arguments::Dict{Symbol,Any}
+    result::Bool
 end
+ProcessNode(id, process_id, arguments) = ProcessNode(id, process_id, arguments, false)
 
-function ProcessCall(process_id::String, parameters)
+function ProcessNode(process_id::String, parameters)
     id = (process_id, parameters) |> repr |> objectid |> base64encode |> x -> process_id * "_" * x
-    ProcessCall(id, process_id, parameters)
+    ProcessNode(id, process_id, parameters)
 end
 
 keywords = [
@@ -82,9 +84,9 @@ function pretty_print(io, d::AbstractDict, tabwidth=3)
 end
 
 
-function Base.show(io::IO, ::MIME"text/plain", p::ProcessCall)
+function Base.show(io::IO, ::MIME"text/plain", p::ProcessNode)
     println(io, "openEO ProcessCall $(p.id) with parameters:")
-    pretty_print(io, p.parameters)
+    pretty_print(io, p.arguments)
 end
 
 function get_parameters(parameters)
@@ -99,7 +101,7 @@ function get_parameters(parameters)
         "array" => Vector,
         # subtypes
         "bounding-box" => BoundingBox,
-        "raster-cube" => ProcessCall
+        "raster-cube" => ProcessNode
     )
 
     res = [] # result must be ordered
@@ -138,9 +140,9 @@ function get_processes_code(host, version)
     warnings = []
     for process in processes
         try
-            parameters = get_parameters(process.parameters)
-            args_str = join(["$(k)::$(v)" for (k, v) in parameters], ", ")
-            args_dict_str = join([":$k=>$k" for (k, v) in parameters], ", ")
+            arguments = get_parameters(process.parameters)
+            args_str = join(["$(k)::$(v)" for (k, v) in arguments], ", ")
+            args_dict_str = join([":$k=>$k" for (k, v) in arguments], ", ")
             docs = [
                 "    $(process.id)($(args_str))",
                 process.description
@@ -151,7 +153,7 @@ function get_processes_code(host, version)
             $(doc_str)
             \"\"\"
             function $(process.id)$(process.id in keywords ? "_" : "")($args_str)
-                ProcessCall("$(process.id)", Dict{Symbol, Any}(($args_dict_str)))
+                ProcessNode("$(process.id)", Dict{Symbol, Any}(($args_dict_str)))
             end
             """
             append!(processes_codes, [code])

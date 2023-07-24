@@ -1,10 +1,14 @@
-function flatten!(g::AbstractProcessCall, root_id, nodes=Vector{ProcessCall}())
-    processes = filter(((k, v),) -> v isa ProcessCall, g.parameters)
+using OrderedCollections
+
+using Infiltrator
+
+function flatten!(g::AbstractProcessNode, root_id, nodes=Vector{ProcessNode}())
+    processes = filter(((k, v),) -> v isa ProcessNode, g.arguments)
 
     # post order tree traversal
     for (key, child) in processes
         flatten!(child, root_id, nodes)
-        g.parameters[key] = ProcessCallReference(child.id)
+        g.arguments[key] = ProcessNodeReference(child.id)
     end
 
     append!(nodes, [v for (k, v) in processes])
@@ -14,50 +18,51 @@ function flatten!(g::AbstractProcessCall, root_id, nodes=Vector{ProcessCall}())
     end
 end
 
-function flatten(process_call::ProcessCall)
+function get_process_graph(process_call::ProcessNode)
     g = deepcopy(process_call)
     root_id = process_call.id
-    return flatten!(g, root_id)
+    processes = flatten!(g, root_id)
+
+    res = OrderedDict()
+    for p in processes
+        id = p.id
+        delete!(res, id)
+        res[p.id] = p
+    end
+
+    l = last(res).second
+    l = ProcessNode(l.id, l.process_id, l.arguments, true)
+    res[l.id] = l
+
+    return res
 end
 
-# """
-# Process and download data synchronously
-# """
-# function compute_result(connection::AbstractConnection, process_call::ProcessCall, filepath::String="", kw...)
-#     step2 = deepcopy(process_call)
-#     step1 = step2.parameters[:data]
-#     step2.parameters[:data] = Dict(:from_node => get_id(step1))
 
-#     query = Dict(
-#         :process => Dict(
-#             :process_graph => Dict(
-#                 get_id(step1) => Dict(
-#                     :process_id => step1.id,
-#                     :arguments => step1.parameters
-#                 ),
-#                 get_id(step2) => Dict(
-#                     :process_id => step2.id,
-#                     :arguments => step2.parameters,
-#                     :result => true
-#                 )
-#             )
-#         )
-#     )
+"""
+Process and download data synchronously
+"""
+function compute_result(connection::AbstractConnection, process_call::ProcessNode, filepath::String="", kw...)
+    query = Dict(
+        :process => Dict(
+            :process_graph => get_process_graph(process_call),
+            :parameters => []
+        )
+    )
 
-#     headers = [
-#         "Accept" => "*",
-#         "Content-Type" => "application/json"
-#     ]
+    headers = [
+        "Accept" => "*",
+        "Content-Type" => "application/json"
+    ]
 
-#     response = fetchApi(connection, "result"; method="POST", headers=headers, body=JSON3.write(query))
+    response = fetchApi(connection, "result"; method="POST", headers=headers, body=JSON3.write(query))
 
-#     if isempty(filepath)
-#         file_extension = split(Dict(response.headers)["Content-Type"], "/")[2]
-#         filepath = "out." * file_extension
-#     end
+    if isempty(filepath)
+        file_extension = split(Dict(response.headers)["Content-Type"], "/")[2]
+        filepath = "out." * file_extension
+    end
 
-#     write(open(filepath, "w"), response.body)
-#     return filepath
-# end
+    write(open(filepath, "w"), response.body)
+    return filepath
+end
 
 
