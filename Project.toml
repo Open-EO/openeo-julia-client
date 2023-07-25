@@ -14,6 +14,7 @@ OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
 StructTypes = "856f2bd8-1eba-4b0a-8007-ebc267875bd4"
 
 [compat]
+AbstractTrees = "0.4"
 HTTP = "1"
 JSON3 = "1"
 StructTypes = "1"
