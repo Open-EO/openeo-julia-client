@@ -1,7 +1,5 @@
 using OrderedCollections
 
-using Infiltrator
-
 function flatten!(g::AbstractProcessNode, root_id, nodes=Vector{ProcessNode}())
     processes = filter(((k, v),) -> v isa ProcessNode, g.arguments)
 
@@ -18,7 +16,19 @@ function flatten!(g::AbstractProcessNode, root_id, nodes=Vector{ProcessNode}())
     end
 end
 
-function get_process_graph(process_call::ProcessNode)
+mutable struct ProcessGraph
+    data::OrderedDict
+end
+
+function Base.show(io::IO, ::MIME"text/plain", g::ProcessGraph)
+    println(io, "openEO ProcessGraph with steps:")
+    for (id, step) in enumerate(values(g.data))
+        args = join(values(step.arguments), ", ")
+        println(io, "   $(id):\t $(step.process_id)($(args))")
+    end
+end
+
+function ProcessGraph(process_call::ProcessNode)
     g = deepcopy(process_call)
     root_id = process_call.id
     processes = flatten!(g, root_id)
@@ -30,21 +40,27 @@ function get_process_graph(process_call::ProcessNode)
         res[p.id] = p
     end
 
+    # set last node as result
     l = last(res).second
     l = ProcessNode(l.id, l.process_id, l.arguments, true)
     res[l.id] = l
 
-    return res
+    return ProcessGraph(res)
+end
+
+function Base.getindex(g::ProcessGraph, i)
+    id = g.data.keys[i]
+    return Base.getindex(g.data, id)
 end
 
 
 """
 Process and download data synchronously
 """
-function compute_result(connection::AbstractConnection, process_call::ProcessNode, filepath::String="", kw...)
+function compute_result(connection::AuthorizedConnection, process_graph::ProcessGraph, filepath::String="", kw...)
     query = Dict(
         :process => Dict(
-            :process_graph => get_process_graph(process_call),
+            :process_graph => process_graph.data,
             :parameters => []
         )
     )
@@ -65,4 +81,7 @@ function compute_result(connection::AbstractConnection, process_call::ProcessNod
     return filepath
 end
 
-
+function compute_result(connection::AuthorizedConnection, process_node::ProcessNode, kw...)
+    process_graph = ProcessGraph(process_node)
+    return compute_result(connection, process_graph, kw...)
+end

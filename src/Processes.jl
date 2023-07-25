@@ -85,7 +85,7 @@ end
 
 
 function Base.show(io::IO, ::MIME"text/plain", p::ProcessNode)
-    println(io, "openEO ProcessCall $(p.id) with parameters:")
+    println(io, "openEO ProcessNode $(p.id) with parameters:")
     pretty_print(io, p.arguments)
 end
 
