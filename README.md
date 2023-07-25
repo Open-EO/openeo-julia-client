@@ -32,14 +32,47 @@ Connect to an openEO backend server and load a collection:
 
 ```julia
 using OpenEOClient
-connection = connect("earthengine.openeo.org", "v1.0")
-connection.load_collection(
-    "COPERNICUS/S2", (16.06, 48.06, 16.65, 48.35),
+c = connect("earthengine.openeo.org", "v1.0")
+c.load_collection(
+    "COPERNICUS/S2", BoundingBox(west=16.06, south=48.06, east=16.65, north=48.35),
     ["2020-01-20", "2020-01-30"], ["B10"]
 )
-# openEO ProcessCall load_collection with parameters:
+#openEO ProcessNode load_collection_tQ79zrFEGi8= with parameters:
+#   bands:           ["B10"]
+#   id:              "COPERNICUS/S2"
+#   spatial_extent:  BoundingBox{Float64}(16.06, 48.06, 16.65, 48.35)
+#   temporal_extent: ["2020-01-20", "2020-01-30"]
+```
+
+load the remote sensing data set, calculate the median of all time points for each pixel, execute the processes on the backend and download the result as a JPG image using an authorized connection:
+
+
+```julia
+using OpenEOClient
+c = connect("earthengine.openeo.org", "v1.0", "my_username", "my_password")
+step1 = c.load_collection(
+    "COPERNICUS/S2", BoundingBox(west=16.06, south=48.06, east=16.65, north=48.35),
+    ["2020-01-01", "2020-01-31"], ["B10"]
+)
+step2 = c.reduce_dimension(step1, Reducer("median"), "t", nothing)
+step3 = c.save_result(step2, "JPEG", Dict())
+compute_result(c.connection, step3)
+# "out.jpeg"
+```
+
+Explore the executed process graph:
+
+```julia
+g = ProcessGraph(step3)
+# openEO ProcessGraph with steps:
+#    1:    load_collection(["B10"], COPERNICUS/S2, BoundingBox{Float64}(16.06, 48.06, 16.65, 48.35), ["2020-01-01", "2020-01-31"])
+#    2:    reduce_dimension(nothing, Reducer(OrderedCollections.OrderedDict{Symbol, ProcessNode}(:reduce1 => ProcessNode("reduce1", "median", Dict{Symbol, Any}(:data => Dict(:from_parameter => "data")), true))), OpenEOClient.ProcessNodeReference("load_collection_YwIbbFrt5Ws="), t)
+#    3:    save_result(Dict{Any, Any}(), JPEG, OpenEOClient.ProcessNodeReference("reduce_dimension_7ezKGDXsnoE="))
+
+g[1]
+# openEO ProcessNode load_collection_YwIbbFrt5Ws= with parameters:
 #    bands:           ["B10"]
-#    spatial_extent:  (16.06, 48.06, 16.65, 48.35)
 #    id:              "COPERNICUS/S2"
-#    temporal_extent: ["2020-01-20", "2020-01-30"]
+#    spatial_extent:  BoundingBox{Float64}(16.06, 48.06, 16.65, 48.35)
+#    temporal_extent: ["2020-01-01", "2020-01-31"]
 ```

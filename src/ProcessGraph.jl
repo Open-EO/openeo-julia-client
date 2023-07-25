@@ -16,9 +16,14 @@ function flatten!(g::AbstractProcessNode, root_id, nodes=Vector{ProcessNode}())
     end
 end
 
-mutable struct ProcessGraph
+abstract type AbstractProcessGraph end
+
+mutable struct ProcessGraph <: AbstractProcessGraph
     data::OrderedDict
 end
+
+StructTypes.StructType(::Type{ProcessGraph}) = StructTypes.CustomStruct()
+StructTypes.lower(g::ProcessGraph) = g.data
 
 function Base.show(io::IO, ::MIME"text/plain", g::ProcessGraph)
     println(io, "openEO ProcessGraph with steps:")
@@ -53,6 +58,18 @@ function Base.getindex(g::ProcessGraph, i)
     return Base.getindex(g.data, id)
 end
 
+struct Reducer <: AbstractProcessGraph
+    process_graph::OrderedDict
+end
+
+function Reducer(process::String="mean")
+    process_graph = Dict(
+        :reduce1 => ProcessNode(
+            "reduce1", process, Dict(:data => Dict(:from_parameter => "data")), true
+        )
+    )
+    return Reducer(process_graph)
+end
 
 """
 Process and download data synchronously
@@ -60,7 +77,7 @@ Process and download data synchronously
 function compute_result(connection::AuthorizedConnection, process_graph::ProcessGraph, filepath::String="", kw...)
     query = Dict(
         :process => Dict(
-            :process_graph => process_graph.data,
+            :process_graph => process_graph,
             :parameters => []
         )
     )

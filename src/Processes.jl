@@ -45,6 +45,10 @@ struct ProcessNodeReference <: AbstractProcessNode
     from_node::String
 end
 
+struct ProcessNodeParameter <: AbstractProcessNode
+    from_parameter::String
+end
+
 struct ProcessNode <: AbstractProcessNode
     id::String
     process_id::String
@@ -52,6 +56,8 @@ struct ProcessNode <: AbstractProcessNode
     result::Bool
 end
 ProcessNode(id, process_id, arguments) = ProcessNode(id, process_id, arguments, false)
+StructTypes.StructType(::Type{ProcessNode}) = StructTypes.Mutable()
+StructTypes.excludes(::Type{ProcessNode}) = (:id,)
 
 function ProcessNode(process_id::String, parameters)
     id = (process_id, parameters) |> repr |> objectid |> base64encode |> x -> process_id * "_" * x
@@ -101,7 +107,8 @@ function get_parameters(parameters)
         "array" => Vector,
         # subtypes
         "bounding-box" => BoundingBox,
-        "raster-cube" => ProcessNode
+        "raster-cube" => ProcessNode,
+        "process-graph" => AbstractProcessGraph
     )
 
     res = [] # result must be ordered
