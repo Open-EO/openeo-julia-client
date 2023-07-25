@@ -91,6 +91,7 @@ function compute_result(connection::AuthorizedConnection, process_graph::Process
     ]
 
     response = fetchApi(connection, "result"; method="POST", headers=headers, body=JSON3.write(query))
+    response isa Exception ? throw(response) : true
 
     if isempty(filepath)
         file_extension = split(Dict(response.headers)["Content-Type"], "/")[2]

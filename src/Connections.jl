@@ -37,8 +37,8 @@ function fetchApi(url; method="GET", headers=deepcopy(default_headers), output_t
             return response
         end
     catch e
-        # make concise error message, not entire callstack
-        @error e
+        msg = e.response.body |> String |> JSON3.read |> x -> x.message
+        return ErrorException(msg)
     end
 end
 
