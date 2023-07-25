@@ -82,6 +82,7 @@ function connect(host, version::String, username::String, password::String)
         using OpenEOClient
         const connection = OpenEOClient.BasicAuthConnection("$host", "$version", "$access_token")
         const collections = OpenEOClient.list_collections(connection)
+        compute_result(p) = OpenEOClient.compute_result(connection, p)
 
         $processes_code
     end

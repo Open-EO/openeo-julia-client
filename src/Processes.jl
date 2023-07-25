@@ -65,9 +65,13 @@ function ProcessNode(process_id::String, parameters)
 end
 
 keywords = [
+    # julia keywords
     "begin", "while", "if", "for", "try", "return", "break", "continue",
     "function", "macro", "quote", "let", "local", "global", "const", "do",
-    "struct", "module", "baremodule", "using", "import", "export"
+    "struct", "module", "baremodule", "using", "import", "export",
+
+    # module symbols
+    "collections", "connection", "compute_result"
 ]
 
 function pretty_print(io, d::AbstractDict, tabwidth=3)

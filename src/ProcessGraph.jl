@@ -62,6 +62,9 @@ struct Reducer <: AbstractProcessGraph
     process_graph::OrderedDict
 end
 
+"""
+Create a ProcessGraph to reduce dimesnions
+"""
 function Reducer(process::String="mean")
     process_graph = Dict(
         :reduce1 => ProcessNode(

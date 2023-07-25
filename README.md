@@ -56,7 +56,7 @@ step1 = c.load_collection(
 )
 step2 = c.reduce_dimension(step1, Reducer("median"), "t", nothing)
 step3 = c.save_result(step2, "JPEG", Dict())
-compute_result(c.connection, step3)
+c.compute_result(step3)
 # "out.jpeg"
 ```
 
