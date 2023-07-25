@@ -63,6 +63,7 @@ function connect(host, version)
         using OpenEOClient
         const connection = OpenEOClient.UnAuthorizedConnection("$host", "$version")
         const collections = OpenEOClient.list_collections(connection)
+        const processes = OpenEOClient.list_processes(connection)
 
         $processes_code
     end
@@ -82,6 +83,7 @@ function connect(host, version::String, username::String, password::String)
         using OpenEOClient
         const connection = OpenEOClient.BasicAuthConnection("$host", "$version", "$access_token")
         const collections = OpenEOClient.list_collections(connection)
+        const processes = OpenEOClient.list_processes(connection)
         compute_result(p) = OpenEOClient.compute_result(connection, p)
 
         $processes_code
