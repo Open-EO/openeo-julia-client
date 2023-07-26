@@ -1,62 +1,50 @@
 using OrderedCollections
 
-function flatten!(g::AbstractProcessNode, root_id, nodes=Vector{ProcessNode}())
-    processes = filter(((k, v),) -> v isa ProcessNode, g.arguments)
+function flatten!(g::AbstractProcessNode, root_id, nodes=OrderedSet{ProcessNode}())
+    arguments_nodes = filter(((k, v),) -> v isa ProcessNode, g.arguments)
 
     # post order tree traversal
-    for (key, child) in processes
+    for (key, child) in arguments_nodes
         flatten!(child, root_id, nodes)
         g.arguments[key] = ProcessNodeReference(child.id)
     end
 
-    append!(nodes, [v for (k, v) in processes])
+    union!(nodes, OrderedSet([v for (k, v) in arguments_nodes]))
 
     if g.id == root_id
-        return vcat(nodes, [g])
+        push!(nodes, g)
+        return nodes
     end
 end
 
 abstract type AbstractProcessGraph end
 
 mutable struct ProcessGraph <: AbstractProcessGraph
-    data::OrderedDict
+    data::OrderedSet{ProcessNode}
 end
 
 StructTypes.StructType(::Type{ProcessGraph}) = StructTypes.CustomStruct()
-StructTypes.lower(g::ProcessGraph) = g.data
+StructTypes.lower(g::ProcessGraph) = [Symbol(x.id) => x for x in g.data] |> OrderedDict
+Base.getindex(g::ProcessGraph, i...) = g.data[i...]
 
 function Base.show(io::IO, ::MIME"text/plain", g::ProcessGraph)
-    println(io, "openEO ProcessGraph with steps:")
-    for (id, step) in enumerate(values(g.data))
+    println(io, "openEO ProcessGraph with $(length(g)) steps:")
+    for step in g.data
         args = join(values(step.arguments), ", ")
-        println(io, "   $(id):\t $(step.process_id)($(args))")
+        println(io, "   $(step.process_id)($(args))")
     end
 end
 
 function ProcessGraph(process_call::ProcessNode)
     g = deepcopy(process_call)
+    g.result = true
     root_id = process_call.id
     processes = flatten!(g, root_id)
-
-    res = OrderedDict()
-    for p in processes
-        id = p.id
-        delete!(res, id)
-        res[p.id] = p
-    end
-
-    # set last node as result
-    l = last(res).second
-    l = ProcessNode(l.id, l.process_id, l.arguments, true)
-    res[l.id] = l
-
-    return ProcessGraph(res)
+    return ProcessGraph(processes)
 end
 
-function Base.getindex(g::ProcessGraph, i)
-    id = g.data.keys[i]
-    return Base.getindex(g.data, id)
-end
+Base.getindex(g::ProcessGraph, i) = Base.getindex(g.data, i)
+Base.length(g::ProcessGraph) = Base.length(g.data)
 
 struct Reducer <: AbstractProcessGraph
     process_graph::OrderedDict

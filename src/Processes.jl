@@ -49,10 +49,10 @@ struct ProcessNodeParameter <: AbstractProcessNode
     from_parameter::String
 end
 
-struct ProcessNode <: AbstractProcessNode
-    id::String
-    process_id::String
-    arguments::Dict{Symbol,Any}
+mutable struct ProcessNode <: AbstractProcessNode
+    const id::String
+    const process_id::String
+    const arguments::Dict{Symbol,Any}
     result::Bool
 end
 ProcessNode(id, process_id, arguments) = ProcessNode(id, process_id, arguments, false)
@@ -95,8 +95,9 @@ end
 
 
 function Base.show(io::IO, ::MIME"text/plain", p::ProcessNode)
-    println(io, "openEO ProcessNode $(p.id) with parameters:")
+    println(io, "openEO ProcessNode $(p.id)")
     pretty_print(io, p.arguments)
+    pretty_print(io, Dict(:result => p.result))
 end
 
 function get_parameters(parameters)
