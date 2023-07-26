@@ -15,6 +15,8 @@ export
     register_processes,
     ProcessNode,
     Processes,
+    ProcessGraph,
+    Reducer,
     BoundingBox,
     compute_result
 end

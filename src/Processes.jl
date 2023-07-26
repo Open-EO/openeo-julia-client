@@ -45,6 +45,10 @@ struct ProcessNodeReference <: AbstractProcessNode
     from_node::String
 end
 
+struct ProcessNodeParameter <: AbstractProcessNode
+    from_parameter::String
+end
+
 struct ProcessNode <: AbstractProcessNode
     id::String
     process_id::String
@@ -52,6 +56,8 @@ struct ProcessNode <: AbstractProcessNode
     result::Bool
 end
 ProcessNode(id, process_id, arguments) = ProcessNode(id, process_id, arguments, false)
+StructTypes.StructType(::Type{ProcessNode}) = StructTypes.Mutable()
+StructTypes.excludes(::Type{ProcessNode}) = (:id,)
 
 function ProcessNode(process_id::String, parameters)
     id = (process_id, parameters) |> repr |> objectid |> base64encode |> x -> process_id * "_" * x
@@ -59,9 +65,13 @@ function ProcessNode(process_id::String, parameters)
 end
 
 keywords = [
+    # julia keywords
     "begin", "while", "if", "for", "try", "return", "break", "continue",
     "function", "macro", "quote", "let", "local", "global", "const", "do",
-    "struct", "module", "baremodule", "using", "import", "export"
+    "struct", "module", "baremodule", "using", "import", "export",
+
+    # module symbols
+    "collections", "connection", "compute_result"
 ]
 
 function pretty_print(io, d::AbstractDict, tabwidth=3)
@@ -85,7 +95,7 @@ end
 
 
 function Base.show(io::IO, ::MIME"text/plain", p::ProcessNode)
-    println(io, "openEO ProcessCall $(p.id) with parameters:")
+    println(io, "openEO ProcessNode $(p.id) with parameters:")
     pretty_print(io, p.arguments)
 end
 
@@ -101,7 +111,8 @@ function get_parameters(parameters)
         "array" => Vector,
         # subtypes
         "bounding-box" => BoundingBox,
-        "raster-cube" => ProcessNode
+        "raster-cube" => ProcessNode,
+        "process-graph" => AbstractProcessGraph
     )
 
     res = [] # result must be ordered

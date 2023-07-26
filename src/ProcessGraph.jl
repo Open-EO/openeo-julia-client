@@ -1,7 +1,5 @@
 using OrderedCollections
 
-using Infiltrator
-
 function flatten!(g::AbstractProcessNode, root_id, nodes=Vector{ProcessNode}())
     processes = filter(((k, v),) -> v isa ProcessNode, g.arguments)
 
@@ -18,7 +16,24 @@ function flatten!(g::AbstractProcessNode, root_id, nodes=Vector{ProcessNode}())
     end
 end
 
-function get_process_graph(process_call::ProcessNode)
+abstract type AbstractProcessGraph end
+
+mutable struct ProcessGraph <: AbstractProcessGraph
+    data::OrderedDict
+end
+
+StructTypes.StructType(::Type{ProcessGraph}) = StructTypes.CustomStruct()
+StructTypes.lower(g::ProcessGraph) = g.data
+
+function Base.show(io::IO, ::MIME"text/plain", g::ProcessGraph)
+    println(io, "openEO ProcessGraph with steps:")
+    for (id, step) in enumerate(values(g.data))
+        args = join(values(step.arguments), ", ")
+        println(io, "   $(id):\t $(step.process_id)($(args))")
+    end
+end
+
+function ProcessGraph(process_call::ProcessNode)
     g = deepcopy(process_call)
     root_id = process_call.id
     processes = flatten!(g, root_id)
@@ -30,21 +45,42 @@ function get_process_graph(process_call::ProcessNode)
         res[p.id] = p
     end
 
+    # set last node as result
     l = last(res).second
     l = ProcessNode(l.id, l.process_id, l.arguments, true)
     res[l.id] = l
 
-    return res
+    return ProcessGraph(res)
 end
 
+function Base.getindex(g::ProcessGraph, i)
+    id = g.data.keys[i]
+    return Base.getindex(g.data, id)
+end
+
+struct Reducer <: AbstractProcessGraph
+    process_graph::OrderedDict
+end
+
+"""
+Create a ProcessGraph to reduce dimesnions
+"""
+function Reducer(process::String="mean")
+    process_graph = Dict(
+        :reduce1 => ProcessNode(
+            "reduce1", process, Dict(:data => Dict(:from_parameter => "data")), true
+        )
+    )
+    return Reducer(process_graph)
+end
 
 """
 Process and download data synchronously
 """
-function compute_result(connection::AbstractConnection, process_call::ProcessNode, filepath::String="", kw...)
+function compute_result(connection::AuthorizedConnection, process_graph::ProcessGraph, filepath::String="", kw...)
     query = Dict(
         :process => Dict(
-            :process_graph => get_process_graph(process_call),
+            :process_graph => process_graph,
             :parameters => []
         )
     )
@@ -55,6 +91,7 @@ function compute_result(connection::AbstractConnection, process_call::ProcessNod
     ]
 
     response = fetchApi(connection, "result"; method="POST", headers=headers, body=JSON3.write(query))
+    response isa Exception ? throw(response) : true
 
     if isempty(filepath)
         file_extension = split(Dict(response.headers)["Content-Type"], "/")[2]
@@ -65,4 +102,7 @@ function compute_result(connection::AbstractConnection, process_call::ProcessNod
     return filepath
 end
 
-
+function compute_result(connection::AuthorizedConnection, process_node::ProcessNode, kw...)
+    process_graph = ProcessGraph(process_node)
+    return compute_result(connection, process_graph, kw...)
+end
