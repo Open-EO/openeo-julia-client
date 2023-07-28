@@ -59,9 +59,22 @@ ProcessNode(id, process_id, arguments) = ProcessNode(id, process_id, arguments, 
 StructTypes.StructType(::Type{ProcessNode}) = StructTypes.Mutable()
 StructTypes.excludes(::Type{ProcessNode}) = (:id,)
 
-function ProcessNode(process_id::String, parameters)
-    id = (process_id, parameters) |> repr |> objectid |> base64encode |> x -> process_id * "_" * x
+function ProcessNode(process_id::String, parameters; id_annotation="")
+    id_hash = (process_id, parameters) |> repr |> objectid |> base64encode
+    id = [process_id, id_annotation, id_hash] |> filter(!isempty) |> x -> join(x, "_")
     ProcessNode(id, process_id, parameters)
+end
+
+# to transpile julia method calls to openEO process graphs
+function ProcessNode(e::Expr, lowered::Core.CodeInfo)
+    arguments = Dict(
+        :data => Dict(:from_parameter => "data"),
+        :index => e.args[2].args[3]
+    )
+    slot = e.args[1] |> Symbol |> String |> x -> x[2:end] |> x -> parse(Int64, x)
+    id_annotation = String(lowered.slotnames[slot])
+    p = ProcessNode("array_element", arguments; id_annotation=id_annotation)
+    return p
 end
 
 keywords = [
@@ -102,12 +115,12 @@ end
 
 function get_parameters(parameters)
     # openEO type string to Julia type
-    openeo_types = Dict(
+    julia_types_map = Dict(
         "string" => String,
         "boolean" => Bool,
         "number" => Number,
         "integer" => Integer,
-        "object" => Any,
+        "object" => Dict,
         "null" => Nothing,
         "array" => Vector,
         # subtypes
@@ -119,28 +132,21 @@ function get_parameters(parameters)
     res = [] # result must be ordered
     for p in parameters
         name = Symbol(p.name)
-        # implement first method of function
-        # TODO: Multiple dispatch on other methods
-        schema = p.schema
-        schema = typeof(schema) <: Vector ? schema[1] : schema
-
-        if "subtype" in keys(schema) && schema["subtype"] in keys(openeo_types)
-            openeo_type = schema["subtype"]
-            # TODO: can be multiple return types
-        elseif "type" in keys(schema) && schema["type"] in keys(openeo_types)
-            openeo_type = schema["type"]
-        else
-            openeo_type = "object"
+        schemata = p.schema isa Vector ? p.schema : [p.schema]
+        types = []
+        for s in schemata
+            if "subtype" in keys(s)
+                push!(types, s["subtype"])
+            elseif "type" in keys(s)
+                push!(types, s["type"])
+            else
+                push!(types, "object")
+            end
         end
+        julia_types = [get(julia_types_map, t, String) for t in types]
+        julia_type = eval(Meta.parse("Union{" * join(julia_types, ",") * "}"))
 
-        if typeof(openeo_type) <: Vector
-            types = map(x -> openeo_types[x], openeo_type)
-            type = eval(Meta.parse("Union{" * join(types, ",") * "}"))
-        else
-            type = openeo_types[openeo_type]
-        end
-
-        append!(res, [(name => type)])
+        push!(res, name => julia_type)
     end
     return res
 end
