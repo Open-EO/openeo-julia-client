@@ -120,7 +120,7 @@ function get_parameters(parameters)
         "boolean" => Bool,
         "number" => Number,
         "integer" => Integer,
-        "object" => Dict,
+        "object" => Any,
         "null" => Nothing,
         "array" => Vector,
         # subtypes
@@ -135,7 +135,7 @@ function get_parameters(parameters)
         schemata = p.schema isa Vector ? p.schema : [p.schema]
         types = []
         for s in schemata
-            if "subtype" in keys(s)
+            if "subtype" in keys(s) && s["subtype"] in keys(julia_types_map)
                 push!(types, s["subtype"])
             elseif "type" in keys(s)
                 push!(types, s["type"])
