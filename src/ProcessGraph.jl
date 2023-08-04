@@ -21,8 +21,14 @@ mutable struct ProcessGraph
     process_graph::OrderedSet{ProcessNode}
 end
 
-StructTypes.StructType(::Type{ProcessGraph}) = StructTypes.Struct()
-# StructTypes.lower(g::ProcessGraph) = g
+StructTypes.StructType(::Type{ProcessGraph}) = StructTypes.CustomStruct()
+function StructTypes.lower(g::ProcessGraph)
+    res = Dict()
+    for s in g.process_graph
+        res[s.id] = s
+    end
+    return Dict(:process_graph => res)
+end
 Base.getindex(g::ProcessGraph, i...) = g.process_graph[i...]
 
 function Base.show(io::IO, ::MIME"text/plain", g::ProcessGraph)
@@ -123,10 +129,7 @@ Process and download data synchronously
 """
 function compute_result(connection::AuthorizedConnection, process_graph::ProcessGraph, filepath::String="", kw...)
     query = Dict(
-        :process => Dict(
-            :process_graph => process_graph,
-            :parameters => []
-        )
+        :process => process_graph
     )
 
     headers = [
