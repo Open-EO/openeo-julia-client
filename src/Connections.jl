@@ -163,7 +163,7 @@ function connect(host, version::String, username::String, password::String)
     module_str = """
     module Connection$(n_existing_connections)
         using OpenEOClient
-        const connection = OpenEOClient.AuthorizedConnection("$host", "$version", "$access_token")
+        const connection = OpenEOClient.AuthorizedConnection("$host", "$version", "Bearer basic//$access_token")
         const collections = OpenEOClient.list_collections(connection)
         const processes = OpenEOClient.list_processes(connection)
         compute_result(p) = OpenEOClient.compute_result(connection, p)
