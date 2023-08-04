@@ -17,49 +17,39 @@ function flatten!(g::AbstractProcessNode, root_id, nodes=OrderedSet{ProcessNode}
     end
 end
 
-abstract type AbstractProcessGraph end
-
-mutable struct ProcessGraph <: AbstractProcessGraph
-    data::OrderedSet{ProcessNode}
+mutable struct ProcessGraph
+    process_graph::OrderedSet{ProcessNode}
 end
 
-StructTypes.StructType(::Type{ProcessGraph}) = StructTypes.CustomStruct()
-StructTypes.lower(g::ProcessGraph) = [Symbol(x.id) => x for x in g.data] |> OrderedDict
-Base.getindex(g::ProcessGraph, i...) = g.data[i...]
+StructTypes.StructType(::Type{ProcessGraph}) = StructTypes.Struct()
+# StructTypes.lower(g::ProcessGraph) = g
+Base.getindex(g::ProcessGraph, i...) = g.process_graph[i...]
 
 function Base.show(io::IO, ::MIME"text/plain", g::ProcessGraph)
     println(io, "openEO ProcessGraph with $(length(g)) steps:")
-    for step in g.data
+    for step in g.process_graph
         args = join(values(step.arguments), ", ")
         println(io, "   $(step.process_id)($(args))")
     end
 end
 
-function ProcessGraph(process_call::ProcessNode)
-    g = deepcopy(process_call)
+function ProcessGraph(process_node::ProcessNode)
+    g = deepcopy(process_node)
     g.result = true
-    root_id = process_call.id
+    root_id = process_node.id
     processes = flatten!(g, root_id)
     return ProcessGraph(processes)
 end
 
-Base.getindex(g::ProcessGraph, i) = Base.getindex(g.data, i)
-Base.length(g::ProcessGraph) = Base.length(g.data)
-
-struct Reducer <: AbstractProcessGraph
-    process_graph::Union{OrderedDict,AbstractProcessGraph,Dict}
-end
+Base.getindex(g::ProcessGraph, i) = Base.getindex(g.process_graph, i)
+Base.length(g::ProcessGraph) = Base.length(g.process_graph)
 
 """
 Create a ProcessGraph to reduce dimesnions
 """
-function Reducer(process::String="mean")
-    process_graph = Dict(
-        :reduce1 => ProcessNode(
-            "reduce1", process, Dict(:data => Dict(:from_parameter => "data")), true
-        )
-    )
-    return Reducer(process_graph)
+function ProcessGraph(process::String="mean")
+    p = ProcessNode(process, Dict(:data => Dict(:from_parameter => "data")); result=true)
+    return ProcessGraph(OrderedSet([p]))
 end
 
 function action(n::Union{Expr,Core.ReturnNode})
@@ -127,12 +117,6 @@ function ProcessGraph(func::Function, types::Tuple{DataType}=(Any,))
     end
     processes |> last |> ProcessGraph
 end
-
-function Reducer(func::Function, types::Tuple{DataType}=(Any,))
-    process_graph = ProcessGraph(func, types)
-    return Reducer(process_graph)
-end
-
 
 """
 Process and download data synchronously

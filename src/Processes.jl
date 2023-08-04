@@ -17,7 +17,7 @@ struct Process
     id::String
     summary::Union{Nothing,String}
     description::String
-    categories::Vector{String}
+    categories::Union{Nothing,Vector{String}}
     parameters::Vector{ProcessParameter}
     returns::Any
     examples::Union{Nothing,Vector{Any}}
@@ -59,21 +59,21 @@ ProcessNode(id, process_id, arguments) = ProcessNode(id, process_id, arguments, 
 StructTypes.StructType(::Type{ProcessNode}) = StructTypes.Mutable()
 StructTypes.excludes(::Type{ProcessNode}) = (:id,)
 
-function ProcessNode(process_id::String, parameters; id_annotation="")
+function ProcessNode(process_id::String, parameters; id_annotation::String="", result::Bool=false)
     id_hash = (process_id, parameters) |> repr |> objectid |> base64encode
     id = [process_id, id_annotation, id_hash] |> filter(!isempty) |> x -> join(x, "_")
-    ProcessNode(id, process_id, parameters)
+    ProcessNode(id, process_id, parameters, result)
 end
 
 # to transpile julia method calls to openEO process graphs
-function ProcessNode(e::Expr, lowered::Core.CodeInfo)
+function ProcessNode(e::Expr, lowered::Core.CodeInfo; result::Bool=false)
     arguments = Dict(
         :data => Dict(:from_parameter => "data"),
         :index => e.args[2].args[3]
     )
     slot = e.args[1] |> Symbol |> String |> x -> x[2:end] |> x -> parse(Int64, x)
     id_annotation = String(lowered.slotnames[slot])
-    p = ProcessNode("array_element", arguments; id_annotation=id_annotation)
+    p = ProcessNode("array_element", arguments; id_annotation=id_annotation, result=result)
     return p
 end
 
@@ -126,7 +126,7 @@ function get_parameters(parameters)
         # subtypes
         "bounding-box" => BoundingBox,
         "raster-cube" => ProcessNode,
-        "process-graph" => AbstractProcessGraph
+        "process-graph" => ProcessGraph
     )
 
     res = [] # result must be ordered
@@ -165,7 +165,8 @@ function get_processes_code(host, version)
                 "    $(process.id)($(args_str))",
                 process.description
             ]
-            doc_str = join(docs, "\n\n")
+            doc_str = join(docs, "\n\n") |> escape_string
+
             code = """
             \"\"\"
             $(doc_str)
@@ -174,12 +175,18 @@ function get_processes_code(host, version)
                 ProcessNode("$(process.id)", Dict{Symbol, Any}(($args_dict_str)))
             end
             """
-            append!(processes_codes, [code])
+
+            if Meta.parse(code).head != :incomplete
+                append!(processes_codes, [code])
+            else
+                println(code)
+            end
+
         catch e
             append!(warnings, [(process.id => e)])
         end
     end
     code = join(processes_codes, "\n")
-    length(warnings) > 0 && @warn join(warnings, "\n")
+    length(warnings) > 0 && @warn join(vcat(["Ignore processes with errors"], warnings), "\n")
     return code
 end
