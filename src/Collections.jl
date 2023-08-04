@@ -2,13 +2,13 @@ import StructTypes
 
 struct Collection
     stac_version::String
-    stac_extensions::Vector{Any}
-    type::String
+    stac_extensions::Any
+    type::Union{String,Nothing}
     id::String
-    title::String
+    title::Union{String,Nothing}
     description::String
     license::String
-    providers::Vector{Any}
+    providers::Any
     extent::Any
     links::Vector{Any}
 end

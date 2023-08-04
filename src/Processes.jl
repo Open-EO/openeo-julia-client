@@ -17,7 +17,7 @@ struct Process
     id::String
     summary::Union{Nothing,String}
     description::String
-    categories::Vector{String}
+    categories::Union{Nothing,Vector{String}}
     parameters::Vector{ProcessParameter}
     returns::Any
     examples::Union{Nothing,Vector{Any}}
@@ -49,19 +49,32 @@ struct ProcessNodeParameter <: AbstractProcessNode
     from_parameter::String
 end
 
-struct ProcessNode <: AbstractProcessNode
-    id::String
-    process_id::String
-    arguments::Dict{Symbol,Any}
+mutable struct ProcessNode <: AbstractProcessNode
+    const id::String
+    const process_id::String
+    const arguments::Dict{Symbol,Any}
     result::Bool
 end
 ProcessNode(id, process_id, arguments) = ProcessNode(id, process_id, arguments, false)
 StructTypes.StructType(::Type{ProcessNode}) = StructTypes.Mutable()
 StructTypes.excludes(::Type{ProcessNode}) = (:id,)
 
-function ProcessNode(process_id::String, parameters)
-    id = (process_id, parameters) |> repr |> objectid |> base64encode |> x -> process_id * "_" * x
-    ProcessNode(id, process_id, parameters)
+function ProcessNode(process_id::String, parameters; id_annotation::String="", result::Bool=false)
+    id_hash = (process_id, parameters) |> repr |> objectid |> base64encode
+    id = [process_id, id_annotation, id_hash] |> filter(!isempty) |> x -> join(x, "_")
+    ProcessNode(id, process_id, parameters, result)
+end
+
+# to transpile julia method calls to openEO process graphs
+function ProcessNode(e::Expr, lowered::Core.CodeInfo; result::Bool=false)
+    arguments = Dict(
+        :data => Dict(:from_parameter => "data"),
+        :index => e.args[2].args[3]
+    )
+    slot = e.args[1] |> Symbol |> String |> x -> x[2:end] |> x -> parse(Int64, x)
+    id_annotation = String(lowered.slotnames[slot])
+    p = ProcessNode("array_element", arguments; id_annotation=id_annotation, result=result)
+    return p
 end
 
 keywords = [
@@ -95,13 +108,14 @@ end
 
 
 function Base.show(io::IO, ::MIME"text/plain", p::ProcessNode)
-    println(io, "openEO ProcessNode $(p.id) with parameters:")
+    println(io, "openEO ProcessNode $(p.id)")
     pretty_print(io, p.arguments)
+    pretty_print(io, Dict(:result => p.result))
 end
 
 function get_parameters(parameters)
     # openEO type string to Julia type
-    openeo_types = Dict(
+    julia_types_map = Dict(
         "string" => String,
         "boolean" => Bool,
         "number" => Number,
@@ -112,34 +126,27 @@ function get_parameters(parameters)
         # subtypes
         "bounding-box" => BoundingBox,
         "raster-cube" => ProcessNode,
-        "process-graph" => AbstractProcessGraph
+        "process-graph" => ProcessGraph
     )
 
     res = [] # result must be ordered
     for p in parameters
         name = Symbol(p.name)
-        # implement first method of function
-        # TODO: Multiple dispatch on other methods
-        schema = p.schema
-        schema = typeof(schema) <: Vector ? schema[1] : schema
-
-        if "subtype" in keys(schema) && schema["subtype"] in keys(openeo_types)
-            openeo_type = schema["subtype"]
-            # TODO: can be multiple return types
-        elseif "type" in keys(schema) && schema["type"] in keys(openeo_types)
-            openeo_type = schema["type"]
-        else
-            openeo_type = "object"
+        schemata = p.schema isa Vector ? p.schema : [p.schema]
+        types = []
+        for s in schemata
+            if "subtype" in keys(s) && s["subtype"] in keys(julia_types_map)
+                push!(types, s["subtype"])
+            elseif "type" in keys(s)
+                push!(types, s["type"])
+            else
+                push!(types, "object")
+            end
         end
+        julia_types = [get(julia_types_map, t, String) for t in types]
+        julia_type = eval(Meta.parse("Union{" * join(julia_types, ",") * "}"))
 
-        if typeof(openeo_type) <: Vector
-            types = map(x -> openeo_types[x], openeo_type)
-            type = eval(Meta.parse("Union{" * join(types, ",") * "}"))
-        else
-            type = openeo_types[openeo_type]
-        end
-
-        append!(res, [(name => type)])
+        push!(res, name => julia_type)
     end
     return res
 end
@@ -158,7 +165,8 @@ function get_processes_code(host, version)
                 "    $(process.id)($(args_str))",
                 process.description
             ]
-            doc_str = join(docs, "\n\n")
+            doc_str = join(docs, "\n\n") |> escape_string
+
             code = """
             \"\"\"
             $(doc_str)
@@ -167,12 +175,18 @@ function get_processes_code(host, version)
                 ProcessNode("$(process.id)", Dict{Symbol, Any}(($args_dict_str)))
             end
             """
-            append!(processes_codes, [code])
+
+            if Meta.parse(code).head != :incomplete
+                append!(processes_codes, [code])
+            else
+                println(code)
+            end
+
         catch e
             append!(warnings, [(process.id => e)])
         end
     end
     code = join(processes_codes, "\n")
-    length(warnings) > 0 && @warn join(warnings, "\n")
+    length(warnings) > 0 && @warn join(vcat(["Ignore processes with errors"], warnings), "\n")
     return code
 end

@@ -29,7 +29,7 @@ password = ENV["OPENEO_PASSWORD"]
     @test Set(keys(step1.arguments)) == Set([:bands, :id, :spatial_extent, :temporal_extent])
     @test step1.arguments[:bands] == ["B10"]
 
-    step2 = c2.reduce_dimension(step1, Reducer("median"), "t", nothing)
+    step2 = c2.reduce_dimension(step1, ProcessGraph("median"), "t", nothing)
     step3 = c2.save_result(step2, "JPEG", Dict())
     result = c2.compute_result(step3)
     @test result == "out.jpeg"
