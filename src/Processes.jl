@@ -26,6 +26,27 @@ struct Process
     experimental::Union{Nothing,Bool}
 end
 StructTypes.StructType(::Type{Process}) = StructTypes.Struct()
+function (process::Process)(args...)
+    params = get_parameters(process.parameters)
+    length(args) == length(params) || throw(ArgumentError("Number of arguments does not match for process $(process.id)"))
+    argument_dict = Dict{Symbol,Any}()
+    for i in 1:length(args)
+        argname,argtype = params[i]
+        args[i] isa argtype || throw(ArgumentError("Type of argument number $i does not match, expected $argtype but got $(typeof(args[i]))"))
+        argument_dict[argname] = args[i]
+    end
+    ProcessNode("$(process.id)", argument_dict)
+end
+function Docs.getdoc(process::Process)
+    arguments = get_parameters(process.parameters)
+    args_str = join(["$(k)::$(v)" for (k, v) in arguments], ", ")
+    docs = [
+                "    $(process.id)($(args_str))",
+                process.description
+            ]
+    join(docs, "\n\n") |> escape_string
+end
+Base.Docs.doc(p::Process, ::Type = Union{}) = Base.Docs.getdoc(p)
 
 function Base.show(io::IO, ::MIME"text/plain", p::Process)
     print(io, "$(p.id)($(join([x.name for x in p.parameters], ", "))): $(p.summary)")

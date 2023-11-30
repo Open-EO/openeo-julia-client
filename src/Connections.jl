@@ -127,6 +127,32 @@ function fetchApi(connection::AuthorizedConnection, path::String; headers=deepco
     return response
 end
 
+struct ConnectionInstance
+    connection::AbstractConnection
+    collections::Vector
+    processes::Dict{Symbol}
+end
+Base.Docs.Binding(x::ConnectionInstance,s::Symbol) = getproperty(x,s)
+Base.propertynames(i::ConnectionInstance,_::Bool=false) = collect(keys(getfield(i,:processes)))
+function Base.getproperty(i::ConnectionInstance,k::Symbol) 
+    if k in (:connection,:connections,:processes)
+        getfield(i,k)
+    else
+        getfield(i,:processes)[k]
+    end
+end
+
+
+
+function connect2(host, version, auth_method::AuthMethod=no_auth)
+    connection = OpenEOClient.UnAuthorizedConnection("$host", "$version")
+    collections = OpenEOClient.list_collections(connection)
+    processes = OpenEOClient.list_processes(connection)
+    processesdict = Dict(Symbol(p.id) => p for p in processes)
+    ConnectionInstance(connection,collections,processesdict)
+end
+
+
 function connect(host, version, auth_method::AuthMethod=no_auth)
     processes_code = get_processes_code(host, version)
 
