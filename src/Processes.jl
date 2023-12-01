@@ -1,6 +1,7 @@
 using HTTP
 import StructTypes
 import Base64: base64encode
+import Markdown
 
 struct ProcessParameter
     name::String
@@ -40,11 +41,10 @@ end
 function Docs.getdoc(process::Process)
     arguments = get_parameters(process.parameters)
     args_str = join(["$(k)::$(v)" for (k, v) in arguments], ", ")
-    docs = [
-                "    $(process.id)($(args_str))",
-                process.description
-            ]
-    join(docs, "\n\n") |> escape_string
+    docs = """    $(process.id)($(args_str))
+    $(process.description)
+    """
+    Markdown.parse(docs)
 end
 Base.Docs.doc(p::Process, ::Type = Union{}) = Base.Docs.getdoc(p)
 
