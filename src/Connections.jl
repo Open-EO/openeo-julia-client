@@ -77,7 +77,11 @@ end
 "OpenID Connect device flow + PKCE authentification"
 function AuthorizedConnection(host, version)
     provider = fetchApi("https://$(host)/$(version)/credentials/oidc").providers[1]
-    discovery_url = "$(provider.issuer).well-known/openid-configuration"
+    if endswith(provider.issuer, "/")
+        discovery_url = "$(provider.issuer).well-known/openid-configuration"
+    else
+        discovery_url = "$(provider.issuer)/.well-known/openid-configuration"
+    end
     client_id = provider.default_clients[1].id
     scopes = provider.scopes
     access_token = get_acces_token(discovery_url, client_id, scopes)
