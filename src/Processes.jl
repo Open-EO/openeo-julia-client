@@ -165,49 +165,10 @@ function get_parameters(parameters)
             end
         end
         julia_types = [get(julia_types_map, t, String) for t in types]
-        julia_type = eval(Meta.parse("Union{" * join(julia_types, ",") * "}"))
+        julia_type = Union{julia_types...}
 
         push!(res, name => julia_type)
     end
     return res
 end
 
-function get_processes_code(host, version)
-    connection = UnAuthorizedConnection(host, version)
-    processes = list_processes(connection)
-    processes_codes = []
-    warnings = []
-    for process in processes
-        try
-            arguments = get_parameters(process.parameters)
-            args_str = join(["$(k)::$(v)" for (k, v) in arguments], ", ")
-            args_dict_str = join([":$k=>$k" for (k, v) in arguments], ", ")
-            docs = [
-                "    $(process.id)($(args_str))",
-                process.description
-            ]
-            doc_str = join(docs, "\n\n") |> escape_string
-
-            code = """
-            \"\"\"
-            $(doc_str)
-            \"\"\"
-            function $(process.id)$(process.id in keywords ? "_" : "")($args_str)
-                ProcessNode("$(process.id)", Dict{Symbol, Any}(($args_dict_str)))
-            end
-            """
-
-            if Meta.parse(code).head != :incomplete
-                append!(processes_codes, [code])
-            else
-                println(code)
-            end
-
-        catch e
-            append!(warnings, [(process.id => e)])
-        end
-    end
-    code = join(processes_codes, "\n")
-    length(warnings) > 0 && @warn join(vcat(["Ignore processes with errors"], warnings), "\n")
-    return code
-end
