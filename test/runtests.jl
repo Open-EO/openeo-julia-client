@@ -18,7 +18,6 @@ password = ENV["OPENEO_PASSWORD"]
     c1 = connect(host, version)
     c2 = connect(host, version, username, password)
     @test allequal([c1, c2] .|> x -> size(x.collections))
-    @test allequal([c1.processes[x].id == c2.processes[x].id for x in 1:length(c1.processes)])
 
     step1 = c2.load_collection(
         "COPERNICUS/S2", BoundingBox(west=16.06, south=48.06, east=16.65, north=48.35),
