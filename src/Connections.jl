@@ -133,10 +133,12 @@ struct ConnectionInstance
     processes::Dict{Symbol}
 end
 Base.Docs.Binding(x::ConnectionInstance,s::Symbol) = getproperty(x,s)
-Base.propertynames(i::ConnectionInstance,_::Bool=false) = collect(keys(getfield(i,:processes)))
+Base.propertynames(i::ConnectionInstance,_::Bool=false) = [collect(keys(getfield(i,:processes)));:compute_result]
 function Base.getproperty(i::ConnectionInstance,k::Symbol) 
     if k in (:connection,:connections,:processes)
         getfield(i,k)
+    elseif k==:compute_result
+        Base.Fix1(compute_result,getfield(i,:connection))
     else
         getfield(i,:processes)[k]
     end
