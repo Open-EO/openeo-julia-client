@@ -77,7 +77,11 @@ end
 "OpenID Connect device flow + PKCE authentification"
 function AuthorizedConnection(host, version)
     provider = fetchApi("https://$(host)/$(version)/credentials/oidc").providers[1]
-    discovery_url = "$(provider.issuer).well-known/openid-configuration"
+    if endswith(provider.issuer, "/")
+        discovery_url = "$(provider.issuer).well-known/openid-configuration"
+    else
+        discovery_url = "$(provider.issuer)/.well-known/openid-configuration"
+    end
     client_id = provider.default_clients[1].id
     scopes = provider.scopes
     access_token = get_acces_token(discovery_url, client_id, scopes)
@@ -123,55 +127,43 @@ function fetchApi(connection::AuthorizedConnection, path::String; headers=deepco
     return response
 end
 
-function connect(host, version, auth_method::AuthMethod=no_auth)
-    processes_code = get_processes_code(host, version)
-
-    if auth_method == no_auth
-        module_str = """
-        module Connection$(n_existing_connections)
-            using OpenEOClient
-            const connection = OpenEOClient.UnAuthorizedConnection("$host", "$version")
-            const collections = OpenEOClient.list_collections(connection)
-            const processes = OpenEOClient.list_processes(connection)
-
-            $processes_code
-        end
-        """
-    elseif auth_method == oidc_auth
-        module_str = """
-        module Connection$(n_existing_connections)
-            using OpenEOClient
-            const connection = OpenEOClient.AuthorizedConnection("$host", "$version")
-            const collections = OpenEOClient.list_collections(connection)
-            const processes = OpenEOClient.list_processes(connection)
-            compute_result(p) = OpenEOClient.compute_result(connection, p)
-
-            $processes_code
-        end
-        """
+struct ConnectionInstance
+    connection::AbstractConnection
+    collections::Vector
+    processes::Dict{Symbol}
+end
+Base.Docs.Binding(x::ConnectionInstance,s::Symbol) = getproperty(x,s)
+Base.propertynames(i::ConnectionInstance,_::Bool=false) = [collect(keys(getfield(i,:processes)));:compute_result]
+function Base.getproperty(i::ConnectionInstance,k::Symbol) 
+    if k in (:connection,:connections,:processes)
+        getfield(i,k)
+    elseif k==:compute_result
+        Base.Fix1(compute_result,getfield(i,:connection))
+    else
+        getfield(i,:processes)[k]
     end
+end
 
-    global n_existing_connections += 1
-    eval(Meta.parse(module_str))
+
+function connect(host, version, auth_method::AuthMethod=no_auth)
+    connection = if auth_method == no_auth
+        OpenEOClient.UnAuthorizedConnection("$host", "$version")
+    elseif auth_method == oidc_auth
+        OpenEOClient.AuthorizedConnection("$host", "$version")
+    end
+    connect(connection)
 end
 
 function connect(host, version::String, username::String, password::String)
     access_response = fetchApi("https://$(username):$(password)@$(host)/$(version)/credentials/basic")
     access_token = access_response["access_token"]
-    processes_code = get_processes_code(host, version)
+    connection = OpenEOClient.AuthorizedConnection("$host", "$version", "Bearer basic//$access_token")
+    connect(connection)
+end
 
-    module_str = """
-    module Connection$(n_existing_connections)
-        using OpenEOClient
-        const connection = OpenEOClient.AuthorizedConnection("$host", "$version", "Bearer basic//$access_token")
-        const collections = OpenEOClient.list_collections(connection)
-        const processes = OpenEOClient.list_processes(connection)
-        compute_result(p) = OpenEOClient.compute_result(connection, p)
-
-        $processes_code
-    end
-    """
-
-    global n_existing_connections += 1
-    eval(Meta.parse(module_str))
+function connect(connection::AbstractConnection)
+    collections = OpenEOClient.list_collections(connection)
+    processes = OpenEOClient.list_processes(connection)
+    processesdict = Dict(Symbol(p.id) => p for p in processes)
+    ConnectionInstance(connection,collections,processesdict)
 end

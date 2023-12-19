@@ -144,8 +144,9 @@ function compute_result(connection::AuthorizedConnection, process_graph::Process
         file_extension = split(Dict(response.headers)["Content-Type"], "/")[2]
         filepath = "out." * file_extension
     end
-
-    write(open(filepath, "w"), response.body)
+    open(filepath, "w") do f
+        write(f, response.body)
+    end
     return filepath
 end
 
