@@ -55,7 +55,7 @@ struct UnAuthorizedConnection <: AbstractConnection
     version::String
 end
 
-Base.show(io::IO, c::UnAuthorizedConnection) = print(io, "unauthorized openEO connection to https://$(c.host)/$(c.version)")
+Base.show(io::IO, ::MIME"text/plain", c::UnAuthorizedConnection) = print(io, "unauthorized openEO connection to https://$(c.host)/$(c.version)")
 
 struct AuthorizedConnection <: AbstractConnection
     host::String
@@ -63,7 +63,7 @@ struct AuthorizedConnection <: AbstractConnection
     authorization::String
 end
 
-Base.show(io::IO, c::AuthorizedConnection) = print(io, "authorized openEO connection to https://$(c.host)/$(c.version)")
+Base.show(io::IO, ::MIME"text/plain", c::AuthorizedConnection) = print(io, "authorized openEO connection to https://$(c.host)/$(c.version)")
 
 "HTTP basic authentification"
 function AuthorizedConnection(host, version, username, password)
@@ -132,6 +132,14 @@ struct ConnectionInstance
     collections::Vector
     processes::Dict{Symbol}
 end
+
+function Base.show(io::IO, ::MIME"text/plain", c::ConnectionInstance)
+    println(io, "openEO ConnectionInstance")
+    Base.show(io, "text/plain", c.connection)
+    print(io, "\n$(length(c.collections)) collections")
+    print(io, "\n$(length(c.processes)) processes")
+end
+
 Base.Docs.Binding(x::ConnectionInstance, s::Symbol) = getproperty(x, s)
 Base.propertynames(i::ConnectionInstance, _::Bool=false) = [collect(keys(getfield(i, :processes))); :compute_result]
 function Base.getproperty(i::ConnectionInstance, k::Symbol)
