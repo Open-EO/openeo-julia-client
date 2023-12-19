@@ -132,15 +132,15 @@ struct ConnectionInstance
     collections::Vector
     processes::Dict{Symbol}
 end
-Base.Docs.Binding(x::ConnectionInstance,s::Symbol) = getproperty(x,s)
-Base.propertynames(i::ConnectionInstance,_::Bool=false) = [collect(keys(getfield(i,:processes)));:compute_result]
-function Base.getproperty(i::ConnectionInstance,k::Symbol) 
-    if k in (:connection,:connections,:processes)
-        getfield(i,k)
-    elseif k==:compute_result
-        Base.Fix1(compute_result,getfield(i,:connection))
+Base.Docs.Binding(x::ConnectionInstance, s::Symbol) = getproperty(x, s)
+Base.propertynames(i::ConnectionInstance, _::Bool=false) = [collect(keys(getfield(i, :processes))); :compute_result]
+function Base.getproperty(i::ConnectionInstance, k::Symbol)
+    if k in (:connection, :collections, :processes)
+        getfield(i, k)
+    elseif k == :compute_result
+        Base.Fix1(compute_result, getfield(i, :connection))
     else
-        getfield(i,:processes)[k]
+        getfield(i, :processes)[k]
     end
 end
 
@@ -165,5 +165,5 @@ function connect(connection::AbstractConnection)
     collections = OpenEOClient.list_collections(connection)
     processes = OpenEOClient.list_processes(connection)
     processesdict = Dict(Symbol(p.id) => p for p in processes)
-    ConnectionInstance(connection,collections,processesdict)
+    ConnectionInstance(connection, collections, processesdict)
 end
