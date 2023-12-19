@@ -37,7 +37,10 @@ It can be loaded into a local Julia session using [Rasters.jl](https://rafaqz.gi
 using ZipFile, Rasters, Plots, ArchGDAL
 
 f = ZipFile.Reader(path).files[1]
-write(open(f.name, "w"), read(f, String))
+open(f.name, "w") do d
+    data =  read(f, String)
+    write(d, data)
+end
 
 cube = Raster(f.name)
 ```
