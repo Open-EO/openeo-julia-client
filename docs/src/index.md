@@ -30,24 +30,6 @@ step3 = c.save_result(step2, "GTIFF-ZIP", Dict())
 path = c.compute_result(step3)
 ```
 
-The data is downloaded in zipped GeoTiff format.
-It can be loaded into a local Julia session using [Rasters.jl](https://rafaqz.github.io/Rasters.jl/stable/):
-
-```@example tutorial
-using ZipFile, Rasters, Plots, ArchGDAL
-
-f = ZipFile.Reader(path).files[1]
-write("out.tif", read(f, String))
-
-cube = Raster("out.tif")
-```
-
-Plotting:
-
-```@example tutorial
-plot(cube)
-```
-
 # Connect to Copernicus Dataspace using OIDC
 
 The [Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/) provides free instant access to sentinel mission data using openEO.
