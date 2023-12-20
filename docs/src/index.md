@@ -37,12 +37,9 @@ It can be loaded into a local Julia session using [Rasters.jl](https://rafaqz.gi
 using ZipFile, Rasters, Plots, ArchGDAL
 
 f = ZipFile.Reader(path).files[1]
-open(f.name, "w") do d
-    data =  read(f, String)
-    write(d, data)
-end
+write("out.tif", read(f, String))
 
-cube = Raster(f.name)
+cube = Raster("out.tif")
 ```
 
 Plotting:
