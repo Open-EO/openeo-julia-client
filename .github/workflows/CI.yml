@@ -63,15 +63,15 @@ jobs:
             Pkg.develop(PackageSpec(path=pwd()))
             Pkg.instantiate()'
       - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-docdeploy@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # - run: |
+      #     julia --project=docs -e '
+      #       using Documenter: DocMeta, doctest
+      #       using OpenEOClient
+      #       DocMeta.setdocmeta!(OpenEOClient, :DocTestSetup, :(using OpenEOClient); recursive=true)
+      #       doctest(OpenEOClient)'
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
-      - uses: julia-actions/julia-docdeploy@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: |
-          julia --project=docs -e '
-            using Documenter: DocMeta, doctest
-            using OpenEOClient
-            DocMeta.setdocmeta!(OpenEOClient, :DocTestSetup, :(using OpenEOClient); recursive=true)
-            doctest(OpenEOClient)'
