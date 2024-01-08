@@ -32,11 +32,11 @@ function (process::Process)(args...)
     length(args) == length(params) || throw(ArgumentError("Number of arguments does not match for process $(process.id)"))
     argument_dict = Dict{Symbol,Any}()
     for i in 1:length(args)
-        argname,argtype = params[i]
+        argname, argtype = params[i]
         args[i] isa argtype || throw(ArgumentError("Type of argument number $i does not match, expected $argtype but got $(typeof(args[i]))"))
         argument_dict[argname] = args[i]
     end
-    ProcessNode("$(process.id)", argument_dict)
+    ProcessCall("$(process.id)", argument_dict)
 end
 function Docs.getdoc(process::Process)
     arguments = get_parameters(process.parameters)
@@ -46,7 +46,7 @@ function Docs.getdoc(process::Process)
     """
     Markdown.parse(docs)
 end
-Base.Docs.doc(p::Process, ::Type = Union{}) = Base.Docs.getdoc(p)
+Base.Docs.doc(p::Process, ::Type=Union{}) = Base.Docs.getdoc(p)
 
 function Base.show(io::IO, ::MIME"text/plain", p::Process)
     print(io, "$(p.id)($(join([x.name for x in p.parameters], ", "))): $(p.summary)")
@@ -60,53 +60,31 @@ end
 
 StructTypes.StructType(::Type{ProcessesRoot}) = StructTypes.Struct()
 
-abstract type AbstractProcessNode end
+abstract type AbstractProcessCall end
 
-struct ProcessNodeReference <: AbstractProcessNode
+struct ProcessCallReference <: AbstractProcessCall
     from_node::String
 end
 
-struct ProcessNodeParameter <: AbstractProcessNode
+struct ProcessCallParameter <: AbstractProcessCall
     from_parameter::String
 end
 
-mutable struct ProcessNode <: AbstractProcessNode
+mutable struct ProcessCall <: AbstractProcessCall
     const id::String
     const process_id::String
     const arguments::Dict{Symbol,Any}
     result::Bool
 end
-ProcessNode(id, process_id, arguments) = ProcessNode(id, process_id, arguments, false)
-StructTypes.StructType(::Type{ProcessNode}) = StructTypes.Mutable()
-StructTypes.excludes(::Type{ProcessNode}) = (:id,)
+ProcessCall(id, process_id, arguments) = ProcessCall(id, process_id, arguments, false)
+StructTypes.StructType(::Type{ProcessCall}) = StructTypes.Mutable()
+StructTypes.excludes(::Type{ProcessCall}) = (:id,)
 
-function ProcessNode(process_id::String, parameters; id_annotation::String="", result::Bool=false)
+function ProcessCall(process_id::String, parameters; id_annotation::String="", result::Bool=false)
     id_hash = (process_id, parameters) |> repr |> objectid |> base64encode
     id = [process_id, id_annotation, id_hash] |> filter(!isempty) |> x -> join(x, "_")
-    ProcessNode(id, process_id, parameters, result)
+    ProcessCall(id, process_id, parameters, result)
 end
-
-# to transpile julia method calls to openEO process graphs
-function ProcessNode(e::Expr, lowered::Core.CodeInfo; result::Bool=false)
-    arguments = Dict(
-        :data => Dict(:from_parameter => "data"),
-        :index => e.args[2].args[3]
-    )
-    slot = e.args[1] |> Symbol |> String |> x -> x[2:end] |> x -> parse(Int64, x)
-    id_annotation = String(lowered.slotnames[slot])
-    p = ProcessNode("array_element", arguments; id_annotation=id_annotation, result=result)
-    return p
-end
-
-keywords = [
-    # julia keywords
-    "begin", "while", "if", "for", "try", "return", "break", "continue",
-    "function", "macro", "quote", "let", "local", "global", "const", "do",
-    "struct", "module", "baremodule", "using", "import", "export",
-
-    # module symbols
-    "collections", "connection", "compute_result"
-]
 
 function pretty_print(io, d::AbstractDict, tabwidth=3)
     if length(d) == 0
@@ -128,8 +106,8 @@ function pretty_print(io, d::AbstractDict, tabwidth=3)
 end
 
 
-function Base.show(io::IO, ::MIME"text/plain", p::ProcessNode)
-    println(io, "openEO ProcessNode $(p.id)")
+function Base.show(io::IO, ::MIME"text/plain", p::ProcessCall)
+    println(io, "openEO ProcessCall $(p.id)")
     pretty_print(io, p.arguments)
     pretty_print(io, Dict(:result => p.result))
 end
@@ -146,7 +124,7 @@ function get_parameters(parameters)
         "array" => Vector,
         # subtypes
         "bounding-box" => BoundingBox,
-        "raster-cube" => ProcessNode,
+        "raster-cube" => ProcessCall,
         "process-graph" => ProcessGraph
     )
 
@@ -172,3 +150,4 @@ function get_parameters(parameters)
     return res
 end
 
+print_json(c::ProcessCall) = c |> JSON3.write |> JSON3.pretty

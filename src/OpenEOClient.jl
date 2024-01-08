@@ -1,10 +1,13 @@
 module OpenEOClient
 
+using Infiltrator
+
 include("Connections.jl")
 include("Processes.jl")
 include("ProcessGraph.jl")
 include("Collections.jl")
 include("API.jl")
+include("cubes.jl")
 
 export
     connect,
@@ -13,10 +16,12 @@ export
     list_jobs,
     list_processes,
     register_processes,
-    ProcessNode,
+    ProcessCall,
     Processes,
     ProcessGraph,
     ProcessGraph,
     BoundingBox,
-    compute_result
+    DataCube,
+    compute_result,
+    print_json
 end

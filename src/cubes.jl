@@ -1,61 +1,70 @@
 #
 # julia types and functions representing openeEO functionality
 #   - meant to be used directly by the user
-#   - automatically converted to JSON objects of the openeEO API
+#   - convertsion chain: DataCube -> ProcessCall -> openEO JSON
 #
 
 import Base: convert, promote, promote_rule
-import Base: +, -, *, /, cos, sqrt, abs, negate
+import Base: +, -, *, /, cos, sqrt, abs
 
 struct DataCube
-    connection::ConnectionInstance
-    collection_id::String
-end
-
-
-struct Node
     op
     children::Vector
 end
 
-Node(x::Node) = x
-Node(x) = Node("create", [x])
+DataCube(x::DataCube) = x
+DataCube(x) = DataCube("create", [x])
 "Create Placeholder node e.g. for user defined functions in reducers and apply functions"
-Node() = Node("create", [nothing])
+DataCube() = DataCube("create", [nothing])
 
-isleaf(n::Node) = n.children |> typeof |> eltype != Node
+function DataCube(con::ConnectionInstance, collection_id::String, spatial_extent::BoundingBox, temporal_extent, bands::Vector{String})
+    DataCube("openeo_call", [con.load_collection(collection_id, spatial_extent, temporal_extent, bands)])
+end
 
-# function Base.show(io::IO, ::MIME"text/plain", n::Node)
-#     if isleaf(n)
-#         print()
-#     else
+isleaf(n::DataCube) = n.children |> typeof |> eltype != DataCube
 
-#     end
+# band() = 
+# filter_space() =
+# filter_time() = 
 
-#     println(io, "openEO Collection \"$(c.id)\"")
-#     print(io, c.description)
-# end
+convert(::Type{DataCube}, x) = DataCube(x)
+convert(::Type{DataCube}, x::DataCube) = DataCube(x)
+promote_rule(::Type{DataCube}, ::Type{T}) where {T<:Real} = DataCube
 
-convert(::Type{Node}, x) = Node(x)
-convert(::Type{Node}, x::Node) = Node(x)
-promote_rule(::Type{Node}, ::Type{T}) where {T<:Real} = Node
+# TODO: Can we just put ProcessCall here instead?
+abs(x::DataCube) = DataCube("absolute", [x])
+sin(x::DataCube) = DataCube("sin", [x])
+cos(x::DataCube) = DataCube("cos", [x])
+sqrt(x::DataCube) = DataCube("sqrt", [x])
 
-abs(x::Node) = Node("absolute", [x])
-sin(x::Node) = Node("sin", [x])
-cos(x::Node) = Node("cos", [x])
-sqrt(x::Node) = Node("sqrt", [x])
++(x::DataCube, y::DataCube) = DataCube("add", [x, y])
+-(x::DataCube, y::DataCube) = DataCube("subtract", [x, y])
+*(x::DataCube, y::DataCube) = DataCube("multiply", [x, y])
+/(x::DataCube, y::DataCube) = DataCube("divide", [x, y])
 
-+(x::Node, y::Node) = Node("add", [x, y])
--(x::Node, y::Node) = Node("subtract", [x, y])
-*(x::Node, y::Node) = Node("multiply", [x, y])
-/(x::Node, y::Node) = Node("divide", [x, y])
++(x::DataCube, y) = +(promote(x, y)...)
+-(x::DataCube, y) = -(promote(x, y)...)
+*(x::DataCube, y) = *(promote(x, y)...)
+/(x::DataCube, y) = /(promote(x, y)...)
 
-+(x::Node, y) = +(promote(x, y)...)
--(x::Node, y) = -(promote(x, y)...)
-*(x::Node, y) = *(promote(x, y)...)
-/(x::Node, y) = /(promote(x, y)...)
++(x, y::DataCube) = +(promote(x, y)...)
+-(x, y::DataCube) = -(promote(x, y)...)
+*(x, y::DataCube) = *(promote(x, y)...)
+/(x, y::DataCube) = /(promote(x, y)...)
 
-+(x, y::Node) = +(promote(x, y)...)
--(x, y::Node) = -(promote(x, y)...)
-*(x, y::Node) = *(promote(x, y)...)
-/(x, y::Node) = /(promote(x, y)...)
+
+function band(cube::ProcessCall, band_name::String)
+    cube.process_id == "load_collection" || error("Cube must be a load_collection process")
+    band_name in cube.arguments[:bands] || error("Band $band must be one of $(cube.arguments[:bands])")
+
+    args = Dict(
+        :data => cube,
+        :dimension => "bands",
+        :reducer => ProcessCall("array_element", Dict(
+            :data => Dict(:from_parameter => "data"),
+            :index => findfirst(x -> x == band_name, cube.arguments[:bands]) - 1
+        )) |> ProcessGraph
+    )
+    c = ProcessCall("reduce_dimension", args)
+    return c
+end
