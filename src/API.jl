@@ -47,6 +47,6 @@ Base.@kwdef struct BoundingBox{T<:Real}
 end
 StructTypes.StructType(::Type{BoundingBox}) = StructTypes.Struct()
 
-function print_json(x)
-    x |> JSON3.write |> JSON3.read |> JSON3.pretty
+function json(x)
+    x |> JSON3.write |> JSON3.read
 end

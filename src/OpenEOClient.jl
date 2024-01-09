@@ -7,7 +7,7 @@ include("Processes.jl")
 include("ProcessGraph.jl")
 include("Collections.jl")
 include("API.jl")
-include("cubes.jl")
+include("Cubes.jl")
 
 export
     connect,
@@ -23,5 +23,7 @@ export
     BoundingBox,
     DataCube,
     compute_result,
-    print_json
+    print_json,
+    get_band,
+    Band
 end
