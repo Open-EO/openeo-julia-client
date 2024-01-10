@@ -1,7 +1,8 @@
 using OrderedCollections
 
 function flatten!(g::AbstractProcessCall, root_id, nodes=OrderedSet{ProcessCall}())
-    arguments_nodes = filter(((k, v),) -> v isa ProcessCall, g.arguments)
+    has_parameter = x -> ProcessCallParameter in typeof.(values(x.arguments))
+    arguments_nodes = filter(((k, v),) -> v isa ProcessCall && !has_parameter(v), g.arguments)
 
     # post order tree traversal
     for (key, child) in arguments_nodes

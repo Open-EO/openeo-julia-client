@@ -6,8 +6,12 @@
 
 import Base: convert, promote, promote_rule
 import Base: +, -, *, /, cos, sqrt, abs
-using Extents
 
+"""
+openEO n-dimensional array of ratser data
+represented by the process graph with root node `call` to create it.
+This process graph can be grown iterativeley by applying functions and operators to `DataCube` instances.
+"""
 struct DataCube
     connection
     call::ProcessCall
@@ -22,7 +26,7 @@ end
 
 function Base.show(io::IO, ::MIME"text/plain", c::DataCube)
     bands_str = if isnothing(c.bands)
-        "nothing"
+        "Single band"
     elseif length(c.bands) == 1
         c.bands[1]
     elseif length(c.bands) <= 5
@@ -36,7 +40,7 @@ function Base.show(io::IO, ::MIME"text/plain", c::DataCube)
     println(io, "   bands: $bands_str")
     println(io, "   spatial extent: $(c.spatial_extent)")
     println(io, "   temporal extent: $(c.temporal_extent)")
-    println(io, "   license extent: $(c.license)")
+    println(io, "   license: $(c.license)")
     print(io, "   connection: https://$(c.connection.connection.host)/$(c.connection.connection.version)")
 end
 
@@ -110,7 +114,7 @@ function get_band(cube::DataCube, band::String)
         )) |> ProcessGraph
     )
     call = ProcessCall("reduce_dimension", args)
-    return DataCube(cube.connection, call, [band], cube.spatial_extent, cube.temporal_extent, cube.description, cube.license, cube.collection)
+    return DataCube(cube.connection, call, nothing, cube.spatial_extent, cube.temporal_extent, cube.description, cube.license, cube.collection)
 end
 
 Base.getindex(cube::DataCube, band_name) = get_band(cube, band_name)
@@ -119,103 +123,27 @@ compute_result(cube::DataCube) = cube.call |> ProcessGraph |> cube.connection.co
 ProcessGraph(cube::DataCube) = ProcessGraph(cube.call)
 
 function +(x::DataCube, y::Real)
-    (isnothing(x.bands) || length(x.bands) == 1) || error("DataCube must have only one band selected")
+    if isnothing(x.bands)
+        # band math
+        # @infiltrate
 
-    summand_x = ProcessCall("array_element", Dict(
-        :data => Dict(:from_parameter => "data"),
-        :index => findfirst(y -> y == x.bands[1], x.call.arguments[:data].arguments[:bands]) - 1
-    ))
+        call = ProcessCall("apply", Dict(
+            :data => x.call,
+            :process => ProcessCall("add", Dict(
+                :x => ProcessCallParameter("x"),
+                :y => y
+            ))
+        ))
 
-    result = ProcessCall("add", Dict(
-        :x => summand_x,
-        :y => y
-    ))
-
-    reducer = ProcessGraph(result)
-
-    call = ProcessCall("reduce_dimension", Dict(
-        :data => x.call.arguments[:data],
-        :dimension => "bands",
-        :reducer => reducer
-    ))
-
-    return DataCube(
-        x.connection, call, nothing,
-        x.spatial_extent, x.temporal_extent,
-        x.collection.description,
-        x.collection.license,
-        x.collection
-    )
+        return DataCube(
+            x.connection, call, nothing,
+            x.spatial_extent, x.temporal_extent,
+            x.collection.description,
+            x.collection.license,
+            x.collection
+        )
+    else
+        # cube math
+        @error "not implemented"
+    end
 end
-
-# function +(x::DataCube, y::DataCube)
-#     x.call.arguments[:data] == y.call.arguments[:data] || error("Both summands must originate from the same collection")
-
-#     summand_x = ProcessCall("array_element", Dict(
-#         :data => Dict(:from_parameter => "data"),
-#         :index => 0 # TODO: fill
-#     ))
-
-#     summand_y = ProcessCall("array_element", Dict(
-#         :data => Dict(:from_parameter => "data"),
-#         :index => 1 # TODO: fill
-#     ))
-
-#     sum = ProcessCall("add", Dict(
-#         :x => summand_x,
-#         :y => summand_y,
-#         :result => true
-#     ))
-
-#     reducer = ProcessGraph(sum)
-
-#     call = ProcessCall("reduce_dimension", Dict(
-#         :data => x.call.arguments[:data],
-#         :dimension => "bands",
-#         :reducer => reducer
-#     ))
-
-#     return DataCube(
-#         x.connection, call, nothing,
-#         x.spatial_extent, x.temporal_extent,
-#         x.collection.description,
-#         x.collection.license,
-#         x.collection
-#     )
-# end
-
-# DataCube(x::DataCube) = x
-# DataCube(x) = DataCube("create", [x])
-# "Create Placeholder node e.g. for user defined functions in reducers and apply functions"
-# DataCube() = DataCube("create", [nothing])
-
-# function DataCube(con::ConnectionInstance, collection_id::String, spatial_extent::BoundingBox, temporal_extent, bands::Vector{String})
-#     DataCube("openeo_call", [con.load_collection(collection_id, spatial_extent, temporal_extent, bands)])
-# end
-
-# isleaf(n::DataCube) = n.children |> typeof |> eltype != DataCube
-
-# convert(::Type{DataCube}, x) = DataCube(x)
-# convert(::Type{DataCube}, x::DataCube) = DataCube(x)
-# promote_rule(::Type{DataCube}, ::Type{T}) where {T<:Real} = DataCube
-
-# # TODO: Can we just put ProcessCall here instead?
-# abs(x::DataCube) = DataCube("absolute", [x])
-# sin(x::DataCube) = DataCube("sin", [x])
-# cos(x::DataCube) = DataCube("cos", [x])
-# sqrt(x::DataCube) = DataCube("sqrt", [x])
-
-# +(x::DataCube, y::DataCube) = DataCube("add", [x, y])
-# -(x::DataCube, y::DataCube) = DataCube("subtract", [x, y])
-# *(x::DataCube, y::DataCube) = DataCube("multiply", [x, y])
-# /(x::DataCube, y::DataCube) = DataCube("divide", [x, y])
-
-# +(x::DataCube, y) = +(promote(x, y)...)
-# -(x::DataCube, y) = -(promote(x, y)...)
-# *(x::DataCube, y) = *(promote(x, y)...)
-# /(x::DataCube, y) = /(promote(x, y)...)
-
-# +(x, y::DataCube) = +(promote(x, y)...)
-# -(x, y::DataCube) = -(promote(x, y)...)
-# *(x, y::DataCube) = *(promote(x, y)...)
-# /(x, y::DataCube) = /(promote(x, y)...)
