@@ -123,27 +123,19 @@ compute_result(cube::DataCube) = cube.call |> ProcessGraph |> cube.connection.co
 ProcessGraph(cube::DataCube) = ProcessGraph(cube.call)
 
 function +(x::DataCube, y::Real)
-    if isnothing(x.bands)
-        # band math
-        # @infiltrate
-
-        call = ProcessCall("apply", Dict(
-            :data => x.call,
-            :process => ProcessCall("add", Dict(
+    call = ProcessCall("apply", Dict(
+        :data => x.call,
+        :process => ProcessCall("add", Dict(
                 :x => ProcessCallParameter("x"),
                 :y => y
-            ))
-        ))
+            ); result=true) |> ProcessGraph
+    ))
 
-        return DataCube(
-            x.connection, call, nothing,
-            x.spatial_extent, x.temporal_extent,
-            x.collection.description,
-            x.collection.license,
-            x.collection
-        )
-    else
-        # cube math
-        @error "not implemented"
-    end
+    return DataCube(
+        x.connection, call, nothing,
+        x.spatial_extent, x.temporal_extent,
+        x.collection.description,
+        x.collection.license,
+        x.collection
+    )
 end
