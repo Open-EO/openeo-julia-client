@@ -28,51 +28,45 @@ using Pkg
 Pkg.add(url="https://github.com/Open-EO/openeo-julia-client.git")
 ```
 
-Connect to an openEO backend server and load a collection:
+Connect to an openEO backend server and list available collections of raster data image datasets:
 
 ```julia
 using OpenEOClient
-c = connect("earthengine.openeo.org", "v1.0")
-c.load_collection(
-    "COPERNICUS/S2", BoundingBox(west=16.06, south=48.06, east=16.65, north=48.35),
-    ["2020-01-20", "2020-01-30"], ["B10"]
-)
-#openEO ProcessNode load_collection_tQ79zrFEGi8= with parameters:
-#   bands:           ["B10"]
-#   id:              "COPERNICUS/S2"
-#   spatial_extent:  BoundingBox{Float64}(16.06, 48.06, 16.65, 48.35)
-#   temporal_extent: ["2020-01-20", "2020-01-30"]
+con = connect("openeo.dataspace.copernicus.eu/openeo", "")
+con.collections
+# 8-element Vector{OpenEOClient.Collection}:
+#  SENTINEL3_OLCI_L1B: Sentinel 3 OLCI
+#  SENTINEL3_SLSTR: Sentinel 3 SLSTR
+#  SENTINEL_5P_L2: Sentinel 5 Precursor
+#  SENTINEL2_L1C: Sentinel-2 L1C
+#  SENTINEL2_L2A: Sentinel-2 L2A
+#  SENTINEL1_GRD: Sentinel-1 SAR GRD: C-band Synthetic Aperture Radar Ground Range Detected.
+#  COPERNICUS_30: Copernicus Global 30 meter Digital Elevation Model dataset.
+#  LANDSAT8_L2: Landsat 8 level 2 ARD, European Coverage
 ```
 
-load the remote sensing data set, calculate the median of all time points for each pixel, execute the processes on the backend and download the result as a JPG image using an authorized connection:
-
+Further computations require a free registration at the [Copernicus Data Space](https://dataspace.copernicus.eu).
+Calculate the enhanced vegetation index (EVI) analog to this [tutorial](https://documentation.dataspace.copernicus.eu/APIs/openEO/Python_Client/Python.html):
 
 ```julia
 using OpenEOClient
-c = connect("earthengine.openeo.org", "v1.0", "my_username", "my_password")
-step1 = c.load_collection(
-    "COPERNICUS/S2", BoundingBox(west=16.06, south=48.06, east=16.65, north=48.35),
-    ["2020-01-01", "2020-01-31"], ["B10"]
+con = connect("openeo.dataspace.copernicus.eu/openeo", "", OpenEOClient.oidc_auth)
+cube = DataCube(con, "SENTINEL2_L2A",
+    BoundingBox(west=5.14, south=51.17, east=5.17, north=51.19),
+    ("2021-02-01", "2021-02-10"), ["B02", "B04", "B08"]
 )
-step2 = c.reduce_dimension(step1, ProcessGraph("median"), "t", nothing)
-step3 = c.save_result(step2, "JPEG", Dict())
-c.compute_result(step3)
-# "out.jpeg"
+blue = cube["B02"] * 0.0001
+red = cube["B04"] * 0.0001
+nir = cube["B08"] * 0.0001
+evi = 2.5 * (nir - red) / (nir + 6.0 * red - 7.5 * blue + 1.0)
+# openEO DataCube
+#    collection: SENTINEL2_L2A
+#    bands: Single band
+#    spatial extent: BoundingBox{Float64}(5.14, 51.17, 5.17, 51.19)
+#    temporal extent: ("2021-02-01", "2021-02-10")
+#    license: proprietary
+#    connection: https://openeo.dataspace.copernicus.eu/openeo/
 ```
 
-Explore the executed process graph:
-
-```julia
-g = ProcessGraph(step3)
-# openEO ProcessGraph with steps:
-#    1:    load_collection(["B10"], COPERNICUS/S2, BoundingBox{Float64}(16.06, 48.06, 16.65, 48.35), ["2020-01-01", "2020-01-31"])
-#    2:    reduce_dimension(nothing, Reducer(OrderedCollections.OrderedDict{Symbol, ProcessNode}(:reduce1 => ProcessNode("reduce1", "median", Dict{Symbol, Any}(:data => Dict(:from_parameter => "data")), true))), OpenEOClient.ProcessNodeReference("load_collection_YwIbbFrt5Ws="), t)
-#    3:    save_result(Dict{Any, Any}(), JPEG, OpenEOClient.ProcessNodeReference("reduce_dimension_7ezKGDXsnoE="))
-
-g[1]
-# openEO ProcessNode load_collection_YwIbbFrt5Ws= with parameters:
-#    bands:           ["B10"]
-#    id:              "COPERNICUS/S2"
-#    spatial_extent:  BoundingBox{Float64}(16.06, 48.06, 16.65, 48.35)
-#    temporal_extent: ["2020-01-01", "2020-01-31"]
-```
+Up to now, the analysis workflow is just being constructed on the client.
+It can be executed on the server using `compute_result(evi)` which returns the file name of the downloaded result.
