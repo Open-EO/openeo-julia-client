@@ -56,7 +56,7 @@ print_json(g::ProcessGraph) = g |> JSON3.write |> JSON3.pretty
 Create a ProcessGraph to reduce dimesnions
 """
 function ProcessGraph(process::String="mean")
-    p = ProcessCall(process, Dict(:data => Dict(:from_parameter => "data")); result=true)
+    p = ProcessCall(process, Dict(:data => ProcessCallParameter("data")); result=true)
     return ProcessGraph(OrderedSet([p]))
 end
 

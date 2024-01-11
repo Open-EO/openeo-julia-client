@@ -35,8 +35,10 @@ function Base.show(io::IO, ::MIME"text/plain", c::DataCube)
         c.bands[1:min(length(c.bands), 5)] |> x -> vcat(x, ["..."]) |> x -> join(x, ", ")
     end
 
+    collection_str = isnothing(c.collection) ? "Unknown" : c.collection["id"]
+
     println(io, "openEO DataCube")
-    println(io, "   collection: $(c.collection.id)")
+    println(io, "   collection: $collection_str")
     println(io, "   bands: $bands_str")
     println(io, "   spatial extent: $(c.spatial_extent)")
     println(io, "   temporal extent: $(c.temporal_extent)")
@@ -109,7 +111,7 @@ function get_band(cube::DataCube, band::String)
         :data => cube.call,
         :dimension => "bands",
         :reducer => ProcessCall("array_element", Dict(
-            :data => Dict(:from_parameter => "data"),
+            :data => ProcessCallParameter("data"),
             :index => findfirst(x -> x == band, cube.bands) - 1
         )) |> ProcessGraph
     )
@@ -129,7 +131,7 @@ function binary_operator(cube::DataCube, number::Real, openeo_process::String, r
     args = if reverse
         Dict(
             :x => number,
-            :y => ProcessCallParameter("x")
+            :y => ProcessCallParameter("y")
         )
     else
         Dict(
@@ -152,28 +154,33 @@ function binary_operator(cube::DataCube, number::Real, openeo_process::String, r
     )
 end
 
+merge(a, b) = a == b ? a : nothing
+
 function binary_operator(cube1::DataCube, cube2::DataCube, openeo_process::String)
     #TODO: use band math with reduce_dimension if no band dimensions available
     #TODO: merge sucessive operators by appending op to previous process call 
-    #TODO: Use merge cubes instead!
 
+    cube1.connection == cube2.connection || error("Cubes must use the same connection")
     cube1.collection == cube2.collection || @warn "Cubes originate from different collections"
+    cube1.spatial_extent == cube2.spatial_extent || @warn "Cubes have different spatial extents"
+    cube1.temporal_extent == cube2.temporal_extent || @warn "Cubes have different temporal extents"
 
-    call = ProcessCall("apply", Dict(
-        :data => cube1.call,
-        :process => ProcessCall(openeo_process, Dict(
-                :x => cube1.call,
-                :y => cube2.call
+    call = ProcessCall("merge_cubes", Dict(
+        :cube1 => cube1.call,
+        :cube2 => cube2.call,
+        :overlap_resolver => ProcessCall(openeo_process, Dict(
+                :x => ProcessCallParameter("x"),
+                :y => ProcessCallParameter("y")
             ); result=true) |> ProcessGraph
     ))
 
     return DataCube(
         cube1.connection, call, nothing,
-        cube1.spatial_extent,
-        cube1.temporal_extent,
-        cube1.collection.description,
-        cube1.collection.license,
-        cube1.collection
+        merge(cube1.spatial_extent, cube2.spatial_extent),
+        merge(cube1.temporal_extent, cube2.temporal_extent),
+        merge(cube1.description, cube2.description),
+        merge(cube1.license, cube2.license),
+        merge(cube1.collection, cube2.collection)
     )
 end
 
@@ -186,7 +193,7 @@ end
 /(cube::DataCube, number::Real) = binary_operator(cube, number, "divide")
 /(number::Real, cube::DataCube) = binary_operator(cube, number, "divide", true)
 
-# TODO: Does this make sens? Is this element wise?
+# element wise operations of two data cubes
 +(cube1::DataCube, cube2::DataCube) = binary_operator(cube1, cube2, "add")
 -(cube1::DataCube, cube2::DataCube) = binary_operator(cube1, cube2, "subtract")
 *(cube1::DataCube, cube2::DataCube) = binary_operator(cube1, cube2, "multiply")
