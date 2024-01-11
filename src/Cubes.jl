@@ -126,24 +126,54 @@ ProcessGraph(cube::DataCube) = ProcessGraph(cube.call)
 
 function binary_operator(cube::DataCube, number::Real, openeo_process::String, reverse=false)
     #TODO: use band math with reduce_dimension if no band dimensions available
-    #TODO: merge sucessive operators by appending op to previous process call 
 
-    args = if reverse
-        Dict(
-            :x => number,
-            :y => ProcessCallParameter("y")
-        )
+    if cube.call.process_id == "apply"
+        # append operation to last existing process call
+        last_call = cube.call.arguments[:process].process_graph |> last
+
+        # can append operation to last existing process call step
+        args = if reverse
+            Dict(
+                :x => number,
+                :y => ProcessCallReference(last_call.id)
+            )
+        else
+            Dict(
+                :x => ProcessCallReference(last_call.id),
+                :y => number
+            )
+        end
+
+        new_steps = cube.call.arguments[:process].process_graph
+        # Mark only last step as a result node
+        for call in new_steps
+            call.result = false
+        end
+
+        new_call = ProcessCall(openeo_process, args; result=true)
+        push!(new_steps, new_call)
+
+        call = cube.call
+        call.arguments[:process] = ProcessGraph(new_steps)
     else
-        Dict(
-            :x => ProcessCallParameter("x"),
-            :y => number
-        )
-    end
+        # need to add a new cprocess call step
+        args = if reverse
+            Dict(
+                :x => number,
+                :y => ProcessCallParameter("y")
+            )
+        else
+            Dict(
+                :x => ProcessCallParameter("x"),
+                :y => number
+            )
+        end
 
-    call = ProcessCall("apply", Dict(
-        :data => cube.call,
-        :process => ProcessCall(openeo_process, args; result=true) |> ProcessGraph
-    ))
+        call = ProcessCall("apply", Dict(
+            :data => cube.call,
+            :process => ProcessCall(openeo_process, args; result=true) |> ProcessGraph
+        ))
+    end
 
     return DataCube(
         cube.connection, call, nothing,
