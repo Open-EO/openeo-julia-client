@@ -63,7 +63,7 @@ end
 """
 Process and download data synchronously
 """
-function compute_result(connection::AuthorizedConnection, process_graph::Union{ProcessGraph,Dict}, filepath::String="", kw...)
+function compute_result(connection::AuthorizedCredentials, process_graph::Union{ProcessGraph,Dict}, filepath::String="", kw...)
     query = Dict(
         :process => process_graph
     )
@@ -86,12 +86,12 @@ function compute_result(connection::AuthorizedConnection, process_graph::Union{P
     return filepath
 end
 
-function compute_result(connection::AuthorizedConnection, process_node::ProcessCall, kw...)
+function compute_result(connection::AuthorizedCredentials, process_node::ProcessCall, kw...)
     process_graph = ProcessGraph(process_node)
     return compute_result(connection, process_graph, kw...)
 end
 
-function compute_result(connection::AuthorizedConnection, json_graph_path::String, kw...)
+function compute_result(connection::AuthorizedCredentials, json_graph_path::String, kw...)
     process_graph = JSON3.read(json_graph_path) |> Dict
     return compute_result(connection, process_graph, kw...)
 end

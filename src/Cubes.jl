@@ -13,7 +13,7 @@ represented by the process graph with root node `call` to create it.
 This process graph can be grown iterativeley by applying functions and operators to `DataCube` instances.
 """
 struct DataCube
-    connection
+    connection::Connection
     call::ProcessCall
 
     bands
@@ -41,11 +41,11 @@ function Base.show(io::IO, ::MIME"text/plain", c::DataCube)
     println(io, "   spatial extent: $(c.spatial_extent)")
     println(io, "   temporal extent: $(c.temporal_extent)")
     println(io, "   license: $(c.license)")
-    print(io, "   connection: https://$(c.connection.connection.host)/$(c.connection.connection.version)")
+    print(io, "   connection: https://$(c.connection.credentials.host)/$(c.connection.credentials.version)")
 end
 
-function DataCube(connection::ConnectionInstance, collection_id::String, spatial_extent::BoundingBox, temporal_extent::Tuple{String,String}, bands::Vector{String})
-    collection = describe_collection(connection.connection, collection_id)
+function DataCube(connection::Connection, collection_id::String, spatial_extent::BoundingBox, temporal_extent::Tuple{String,String}, bands::Vector{String})
+    collection = describe_collection(connection.credentials, collection_id)
 
     call = ProcessCall("load_collection", Dict(
         :id => collection_id,
@@ -63,8 +63,8 @@ function DataCube(connection::ConnectionInstance, collection_id::String, spatial
     )
 end
 
-function DataCube(connection::ConnectionInstance, collection_id)
-    collection = describe_collection(connection.connection, collection_id)
+function DataCube(connection::Connection, collection_id)
+    collection = describe_collection(connection.credentials, collection_id)
 
     bands = try
         collection["cube:dimensions"].bands.values |> Vector{String}
@@ -122,20 +122,72 @@ Base.getindex(cube::DataCube, band_name) = get_band(cube, band_name)
 compute_result(cube::DataCube) = cube.call |> ProcessGraph |> cube.connection.compute_result
 ProcessGraph(cube::DataCube) = ProcessGraph(cube.call)
 
-function +(x::DataCube, y::Real)
+function binary_operator(cube::DataCube, number::Real, openeo_process::String, reverse=false)
+    #TODO: use band math with reduce_dimension if no band dimensions available
+    #TODO: merge sucessive operators by appending op to previous process call 
+
+    args = if reverse
+        Dict(
+            :x => number,
+            :y => ProcessCallParameter("x")
+        )
+    else
+        Dict(
+            :x => ProcessCallParameter("x"),
+            :y => number
+        )
+    end
+
     call = ProcessCall("apply", Dict(
-        :data => x.call,
-        :process => ProcessCall("add", Dict(
-                :x => ProcessCallParameter("x"),
-                :y => y
+        :data => cube.call,
+        :process => ProcessCall(openeo_process, args; result=true) |> ProcessGraph
+    ))
+
+    return DataCube(
+        cube.connection, call, nothing,
+        cube.spatial_extent, cube.temporal_extent,
+        cube.collection.description,
+        cube.collection.license,
+        cube.collection
+    )
+end
+
+function binary_operator(cube1::DataCube, cube2::DataCube, openeo_process::String)
+    #TODO: use band math with reduce_dimension if no band dimensions available
+    #TODO: merge sucessive operators by appending op to previous process call 
+    #TODO: Use merge cubes instead!
+
+    cube1.collection == cube2.collection || @warn "Cubes originate from different collections"
+
+    call = ProcessCall("apply", Dict(
+        :data => cube1.call,
+        :process => ProcessCall(openeo_process, Dict(
+                :x => cube1.call,
+                :y => cube2.call
             ); result=true) |> ProcessGraph
     ))
 
     return DataCube(
-        x.connection, call, nothing,
-        x.spatial_extent, x.temporal_extent,
-        x.collection.description,
-        x.collection.license,
-        x.collection
+        cube1.connection, call, nothing,
+        cube1.spatial_extent,
+        cube1.temporal_extent,
+        cube1.collection.description,
+        cube1.collection.license,
+        cube1.collection
     )
 end
+
++(cube::DataCube, number::Real) = binary_operator(cube, number, "add")
++(number::Real, cube::DataCube) = binary_operator(cube, number, "add", true)
+-(cube::DataCube, number::Real) = binary_operator(cube, number, "subtract")
+-(number::Real, cube::DataCube) = binary_operator(cube, number, "subtract", true)
+*(cube::DataCube, number::Real) = binary_operator(cube, number, "multiply")
+*(number::Real, cube::DataCube) = binary_operator(cube, number, "multiply", true)
+/(cube::DataCube, number::Real) = binary_operator(cube, number, "divide")
+/(number::Real, cube::DataCube) = binary_operator(cube, number, "divide", true)
+
+# TODO: Does this make sens? Is this element wise?
++(cube1::DataCube, cube2::DataCube) = binary_operator(cube1, cube2, "add")
+-(cube1::DataCube, cube2::DataCube) = binary_operator(cube1, cube2, "subtract")
+*(cube1::DataCube, cube2::DataCube) = binary_operator(cube1, cube2, "multiply")
+/(cube1::DataCube, cube2::DataCube) = binary_operator(cube1, cube2, "divide")

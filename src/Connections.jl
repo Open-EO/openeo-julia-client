@@ -48,34 +48,34 @@ function get_acces_token(discovery_url::String, client_id::String, scopes::Abstr
     end
 end
 
-abstract type AbstractConnection end
+abstract type AbstractCredentials end
 
-struct UnAuthorizedConnection <: AbstractConnection
+struct UnAuthorizedCredentials <: AbstractCredentials
     host::String
     version::String
 end
 
-Base.show(io::IO, ::MIME"text/plain", c::UnAuthorizedConnection) = print(io, "unauthorized openEO connection to https://$(c.host)/$(c.version)")
+Base.show(io::IO, ::MIME"text/plain", c::UnAuthorizedCredentials) = print(io, "unauthorized openEO credentials to https://$(c.host)/$(c.version)")
 
-struct AuthorizedConnection <: AbstractConnection
+struct AuthorizedCredentials <: AbstractCredentials
     host::String
     version::String
     authorization::String
 end
 
-Base.show(io::IO, ::MIME"text/plain", c::AuthorizedConnection) = print(io, "authorized openEO connection to https://$(c.host)/$(c.version)")
+Base.show(io::IO, ::MIME"text/plain", c::AuthorizedCredentials) = print(io, "authorized openEO credentials to https://$(c.host)/$(c.version)")
 
 "HTTP basic authentification"
-function AuthorizedConnection(host, version, username, password)
+function AuthorizedCredentials(host, version, username, password)
     access_response = fetchApi("https://$(username):$(password)@$(host)/$(version)/credentials/basic")
     access_token = access_response.access_token
     access_token = get_access_token(host, version, username, password)
     authorization = "Bearer basic//$access_token"
-    AuthorizedConnection(host, version, authorization)
+    AuthorizedCredentials(host, version, authorization)
 end
 
 "OpenID Connect device flow + PKCE authentification"
-function AuthorizedConnection(host, version)
+function AuthorizedCredentials(host, version)
     provider = fetchApi("https://$(host)/$(version)/credentials/oidc").providers[1]
     if endswith(provider.issuer, "/")
         discovery_url = "$(provider.issuer).well-known/openid-configuration"
@@ -86,7 +86,7 @@ function AuthorizedConnection(host, version)
     scopes = provider.scopes
     access_token = get_acces_token(discovery_url, client_id, scopes)
     authorization = "Bearer oidc/$(provider.id)/$access_token"
-    AuthorizedConnection(host, version, authorization)
+    AuthorizedCredentials(host, version, authorization)
 end
 
 @enum AuthMethod no_auth basic_auth oidc_auth
@@ -114,39 +114,39 @@ function fetchApi(url; method="GET", headers=deepcopy(default_headers), output_t
     end
 end
 
-function fetchApi(connection::AbstractConnection, path::String; kw...)
+function fetchApi(connection::AbstractCredentials, path::String; kw...)
     url = "https://$(connection.host)/$(connection.version)/$(path)"
     response = fetchApi(url; kw...)
     return response
 end
 
-function fetchApi(connection::AuthorizedConnection, path::String; headers=deepcopy(default_headers), kw...)
+function fetchApi(connection::AuthorizedCredentials, path::String; headers=deepcopy(default_headers), kw...)
     url = "https://$(connection.host)/$(connection.version)/$(path)"
     append!(headers, ["Authorization" => connection.authorization])
     response = fetchApi(url; headers=headers, kw...)
     return response
 end
 
-struct ConnectionInstance
-    connection::AbstractConnection
+struct Connection
+    credentials::AbstractCredentials
     collections::Vector
     processes::Dict{Symbol}
 end
 
-function Base.show(io::IO, ::MIME"text/plain", c::ConnectionInstance)
-    println(io, "openEO ConnectionInstance")
-    Base.show(io, "text/plain", c.connection)
+function Base.show(io::IO, ::MIME"text/plain", c::Connection)
+    println(io, "openEO Connection")
+    Base.show(io, "text/plain", c.credentials)
     print(io, "\n$(length(c.collections)) collections")
     print(io, "\n$(length(c.processes)) processes")
 end
 
-Base.Docs.Binding(x::ConnectionInstance, s::Symbol) = getproperty(x, s)
-Base.propertynames(i::ConnectionInstance, _::Bool=false) = [collect(keys(getfield(i, :processes))); :compute_result]
-function Base.getproperty(i::ConnectionInstance, k::Symbol)
-    if k in (:connection, :collections, :processes)
+Base.Docs.Binding(x::Connection, s::Symbol) = getproperty(x, s)
+Base.propertynames(i::Connection, _::Bool=false) = [collect(keys(getfield(i, :processes))); :compute_result]
+function Base.getproperty(i::Connection, k::Symbol)
+    if k in (:credentials, :collections, :processes)
         getfield(i, k)
     elseif k == :compute_result
-        Base.Fix1(compute_result, getfield(i, :connection))
+        Base.Fix1(compute_result, getfield(i, :credentials))
     else
         getfield(i, :processes)[k]
     end
@@ -155,9 +155,9 @@ end
 
 function connect(host, version, auth_method::AuthMethod=no_auth)
     connection = if auth_method == no_auth
-        OpenEOClient.UnAuthorizedConnection("$host", "$version")
+        OpenEOClient.UnAuthorizedCredentials("$host", "$version")
     elseif auth_method == oidc_auth
-        OpenEOClient.AuthorizedConnection("$host", "$version")
+        OpenEOClient.AuthorizedCredentials("$host", "$version")
     end
     connect(connection)
 end
@@ -165,13 +165,13 @@ end
 function connect(host, version::String, username::String, password::String)
     access_response = fetchApi("https://$(username):$(password)@$(host)/$(version)/credentials/basic")
     access_token = access_response["access_token"]
-    connection = OpenEOClient.AuthorizedConnection("$host", "$version", "Bearer basic//$access_token")
+    connection = OpenEOClient.AuthorizedCredentials("$host", "$version", "Bearer basic//$access_token")
     connect(connection)
 end
 
-function connect(connection::AbstractConnection)
+function connect(connection::AbstractCredentials)
     collections = OpenEOClient.list_collections(connection)
     processes = OpenEOClient.list_processes(connection)
     processesdict = Dict(Symbol(p.id) => p for p in processes)
-    ConnectionInstance(connection, collections, processesdict)
+    Connection(connection, collections, processesdict)
 end
