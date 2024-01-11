@@ -77,7 +77,8 @@ function compute_result(connection::AuthorizedCredentials, process_graph::Union{
     response isa Exception ? throw(response) : true
 
     if isempty(filepath)
-        file_extension = split(Dict(response.headers)["Content-Type"], "/")[2]
+        file_extension = Dict(response.headers)["Content-Type"] |>
+                         x -> match(r"/[A-z]+;?", x).match |> x -> match(r"[A-z]+", x).match |> String
         filepath = "out." * file_extension
     end
     open(filepath, "w") do f
