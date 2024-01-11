@@ -125,13 +125,11 @@ compute_result(cube::DataCube) = cube.call |> ProcessGraph |> cube.connection.co
 ProcessGraph(cube::DataCube) = ProcessGraph(cube.call)
 
 function binary_operator(cube::DataCube, number::Real, openeo_process::String, reverse=false)
-    #TODO: use band math with reduce_dimension if no band dimensions available
+    if cube.call.process_id in ["apply", "reduce_dimension"]
+        # can append operation to last existing process call
+        argument = Dict("apply" => :process, "reduce_dimension" => :reducer)[cube.call.process_id]
+        last_call = cube.call.arguments[argument].process_graph |> last
 
-    if cube.call.process_id == "apply"
-        # append operation to last existing process call
-        last_call = cube.call.arguments[:process].process_graph |> last
-
-        # can append operation to last existing process call step
         args = if reverse
             Dict(
                 :x => number,
@@ -144,7 +142,7 @@ function binary_operator(cube::DataCube, number::Real, openeo_process::String, r
             )
         end
 
-        new_steps = cube.call.arguments[:process].process_graph
+        new_steps = cube.call.arguments[argument].process_graph
         # Mark only last step as a result node
         for call in new_steps
             call.result = false
@@ -154,7 +152,7 @@ function binary_operator(cube::DataCube, number::Real, openeo_process::String, r
         push!(new_steps, new_call)
 
         call = cube.call
-        call.arguments[:process] = ProcessGraph(new_steps)
+        call.arguments[argument] = ProcessGraph(new_steps)
     else
         # need to add a new cprocess call step
         args = if reverse
@@ -187,9 +185,6 @@ end
 merge(a, b) = a == b ? a : nothing
 
 function binary_operator(cube1::DataCube, cube2::DataCube, openeo_process::String)
-    #TODO: use band math with reduce_dimension if no band dimensions available
-    #TODO: merge sucessive operators by appending op to previous process call 
-
     cube1.connection == cube2.connection || error("Cubes must use the same connection")
     cube1.collection == cube2.collection || @warn "Cubes originate from different collections"
     cube1.spatial_extent == cube2.spatial_extent || @warn "Cubes have different spatial extents"
