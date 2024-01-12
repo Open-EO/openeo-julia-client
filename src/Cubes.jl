@@ -176,7 +176,7 @@ function binary_operator(cube::DataCube, number::Real, openeo_process::String, r
     end
 
     return DataCube(
-        cube.connection, call, nothing,
+        cube.connection, call, cube.bands,
         cube.spatial_extent, cube.temporal_extent,
         cube.collection.description,
         cube.collection.license,
