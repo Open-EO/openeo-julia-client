@@ -46,18 +46,35 @@ password = ENV["OPENEO_PASSWORD"]
     cube["B01"] |> abs |> sqrt
 
     cube["B01"]
-    cube["B01"] + 1
-    1 + cube["B01"]
-    cube["B01"] + 1 + 2
-    cube + 1
-    1 + cube + 1
-    cube["B01"] + cube["B02"]
-    cube + cube
-    cube + 1
-    cube + 1 + 2
-    1 + cube
-    @test (cube["B01"]+1+1).call.arguments[:reducer] |> length == 3
-    @test (cube["B01"] + cube["B02"]).call.process_id == "merge_cubes"
+    cube["B01"] .+ 1
+    1 .+ cube["B01"]
+    @. cube["B01"] + 1 + 2
+    cube .+ 1
+    1 .+ cube .+ 1
+    cube["B01"] .+ cube["B02"]
+    cube .+ cube
+    cube .+ 1
+    cube .+ 1 .+ 2
+    1 .+ cube
+    @test (cube["B01"].+1 .+ 1).call.arguments[:reducer] |> length == 3
+    @test (cube["B01"] .+ cube["B02"]).call.process_id == "merge_cubes"
     @test (cube+2*3).call.arguments[:process] |> length == 1
-    @test cube2 = cube + 2 * 3 |> typeof == DataCube
+    @test cube2 = cube .+ 2 * 3 |> typeof == DataCube
+
+    # OpenEO applies processes per element thus enforce broadcasting
+    @test sin.(cube) |> typeof == DataCube
+    @test_throws MethodError sin(cube)
+    @test cube ./ 2 |> typeof == DataCube
+    @test cube / 2 |> typeof == DataCube
+    @test_throws MethodError 2 / cube
+    @test 2 ./ cube |> typeof == DataCube
+    @test_throws MethodError cube / cube
+    @test cube ./ cube |> typeof == DataCube
+    @test cube + cube |> typeof == DataCube
+    @test cube .+ cube |> typeof == DataCube
+
+    @test_throws ErrorException reduce_dimension(cube, "xxx", "t")
+    @test_throws ErrorException reduce_dimension(cube, "min", "xxx")
+    reduce_dimension(cube["B02"], "min", "t")
+    reduce_dimension(cube, "min", "t")
 end

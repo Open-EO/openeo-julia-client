@@ -59,7 +59,7 @@ cube = DataCube(con, "SENTINEL2_L2A",
 blue = cube["B02"] * 0.0001
 red = cube["B04"] * 0.0001
 nir = cube["B08"] * 0.0001
-evi = 2.5 * (nir - red) / (nir + 6.0 * red - 7.5 * blue + 1.0)
+evi = @. 2.5 * (nir - red) / (nir + 6.0 * red - 7.5 * blue + 1.0)
 # openEO DataCube
 #    collection: SENTINEL2_L2A
 #    bands: Single band

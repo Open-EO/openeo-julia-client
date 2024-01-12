@@ -4,8 +4,7 @@
 #   - convertsion chain: DataCube -> ProcessCall -> openEO JSON
 #
 
-import Base: convert, promote, promote_rule
-import Base: +, -, *, /, cos, sqrt, abs, ==, !, !=
+import Base: broadcasted, +, -, *, /, cos, sqrt, abs, ==, !, !=
 
 """
 openEO n-dimensional array of ratser data
@@ -265,29 +264,33 @@ function unary_operator(cube::DataCube, openeo_process::String)
     )
 end
 
-+(cube::DataCube, number::Real) = binary_operator(cube, number, "add")
-+(number::Real, cube::DataCube) = binary_operator(cube, number, "add", true)
--(cube::DataCube, number::Real) = binary_operator(cube, number, "subtract")
--(number::Real, cube::DataCube) = binary_operator(cube, number, "subtract", true)
+# element wise operations of cube and number
 *(cube::DataCube, number::Real) = binary_operator(cube, number, "multiply")
 *(number::Real, cube::DataCube) = binary_operator(cube, number, "multiply", true)
 /(cube::DataCube, number::Real) = binary_operator(cube, number, "divide")
-/(number::Real, cube::DataCube) = binary_operator(cube, number, "divide", true)
+broadcasted(::typeof(+), cube::DataCube, number::Real) = binary_operator(cube, number, "add")
+broadcasted(::typeof(+), number::Real, cube::DataCube) = binary_operator(cube, number, "add", true)
+broadcasted(::typeof(-), cube::DataCube, number::Real) = binary_operator(cube, number, "subtract")
+broadcasted(::typeof(-), number::Real, cube::DataCube) = binary_operator(cube, number, "subtract", true)
+broadcasted(::typeof(*), cube::DataCube, number::Real) = binary_operator(cube, number, "multiply")
+broadcasted(::typeof(*), number::Real, cube::DataCube) = binary_operator(cube, number, "multiply", true)
+broadcasted(::typeof(/), cube::DataCube, number::Real) = binary_operator(cube, number, "divide")
+broadcasted(::typeof(/), number::Real, cube::DataCube) = binary_operator(cube, number, "divide", true)
 
-==(cube::DataCube, number::Real) = binary_operator(cube, number, "eq")
-==(number::Real, cube::DataCube) = binary_operator(cube, number, "eq", true)
-!=(cube::DataCube, number::Real) = binary_operator(cube, number, "neq")
-!=(number::Real, cube::DataCube) = binary_operator(cube, number, "neq", true)
+broadcasted(::typeof(==), cube::DataCube, number::Real) = binary_operator(cube, number, "eq")
+broadcasted(::typeof(==), number::DataCube, cube::Real) = binary_operator(cube, number, "eq", true)
 
 # element wise operations of two data cubes
 +(cube1::DataCube, cube2::DataCube) = binary_operator(cube1, cube2, "add")
 -(cube1::DataCube, cube2::DataCube) = binary_operator(cube1, cube2, "subtract")
-*(cube1::DataCube, cube2::DataCube) = binary_operator(cube1, cube2, "multiply")
-/(cube1::DataCube, cube2::DataCube) = binary_operator(cube1, cube2, "divide")
+broadcasted(::typeof(+), cube1::DataCube, cube2::DataCube) = binary_operator(cube1, cube2, "add")
+broadcasted(::typeof(-), cube1::DataCube, cube2::DataCube) = binary_operator(cube1, cube2, "subtract")
+broadcasted(::typeof(*), cube1::DataCube, cube2::DataCube) = binary_operator(cube1, cube2, "multiply")
+broadcasted(::typeof(/), cube1::DataCube, cube2::DataCube) = binary_operator(cube1, cube2, "divide")
 
-sqrt(cube::DataCube) = unary_operator(cube, "sqrt")
-abs(cube::DataCube) = unary_operator(cube, "abs")
-sin(cube::DataCube) = unary_operator(cube, "sin")
-cos(cube::DataCube) = unary_operator(cube, "cos")
-!(cube::DataCube) = unary_operator(cube, "not")
-
+# element wise unary operations
+broadcasted(::typeof(sqrt), cube::DataCube) = unary_operator(cube, "sqrt")
+broadcasted(::typeof(abs), cube::DataCube) = unary_operator(cube, "abs")
+broadcasted(::typeof(sin), cube::DataCube) = unary_operator(cube, "sin")
+broadcasted(::typeof(cos), cube::DataCube) = unary_operator(cube, "cos")
+broadcasted(::typeof(!), cube::DataCube) = unary_operator(cube, "not")
