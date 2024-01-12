@@ -28,7 +28,7 @@ using Pkg
 Pkg.add(url="https://github.com/Open-EO/openeo-julia-client.git")
 ```
 
-Connect to an openEO backend server and list available collections of raster data image datasets:
+Connect to an openEO backend server and list available collections of raster image datasets:
 
 ```julia
 using OpenEOClient
@@ -45,7 +45,8 @@ con.collections
 #  LANDSAT8_L2: Landsat 8 level 2 ARD, European Coverage
 ```
 
-Further computations require a free registration at the [Copernicus Data Space](https://dataspace.copernicus.eu).
+Further computations require a free registration at an openEO backend.
+Here, we use the [Copernicus Data Space](https://dataspace.copernicus.eu).
 Calculate the enhanced vegetation index (EVI) analog to this [tutorial](https://documentation.dataspace.copernicus.eu/APIs/openEO/Python_Client/Python.html):
 
 ```julia
