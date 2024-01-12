@@ -40,6 +40,11 @@ password = ENV["OPENEO_PASSWORD"]
         ("2020-01-20", "2020-01-30"), ["B01", "B02"]
     )
 
+    abs(cube)
+    abs(cube["B01"])
+    cube |> abs |> sqrt
+    cube["B01"] |> abs |> sqrt
+
     cube["B01"]
     cube["B01"] + 1
     1 + cube["B01"]

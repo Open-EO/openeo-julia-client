@@ -5,7 +5,7 @@
 #
 
 import Base: convert, promote, promote_rule
-import Base: +, -, *, /, cos, sqrt, abs
+import Base: +, -, *, /, cos, sqrt, abs, ==, !, !=
 
 """
 openEO n-dimensional array of ratser data
@@ -45,6 +45,8 @@ function Base.show(io::IO, ::MIME"text/plain", c::DataCube)
     println(io, "   license: $(c.license)")
     print(io, "   connection: https://$(c.connection.credentials.host)/$(c.connection.credentials.version)")
 end
+
+print_json(cube::DataCube) = cube.call |> ProcessGraph |> print_json
 
 function DataCube(connection::Connection, collection_id::String, spatial_extent::BoundingBox, temporal_extent::Tuple{String,String}, bands::Vector{String})
     collection = describe_collection(connection.credentials, collection_id)
@@ -209,6 +211,42 @@ function binary_operator(cube1::DataCube, cube2::DataCube, openeo_process::Strin
     )
 end
 
+function unary_operator(cube::DataCube, openeo_process::String)
+    if cube.call.process_id in ["apply", "reduce_dimension"]
+        # can append operation to last existing process call
+        argument = Dict("apply" => :process, "reduce_dimension" => :reducer)[cube.call.process_id]
+        last_call = cube.call.arguments[argument].process_graph |> last
+
+        new_steps = cube.call.arguments[argument].process_graph
+        # Mark only last step as a result node
+        for call in new_steps
+            call.result = false
+        end
+
+        new_call = ProcessCall(openeo_process, Dict(:x => ProcessCallParameter("x")); result=true)
+        push!(new_steps, new_call)
+
+        call = cube.call
+        call.arguments[argument] = ProcessGraph(new_steps)
+    else
+        call = ProcessCall("apply", Dict(
+            :data => cube.call,
+            :process => ProcessCall(openeo_process, Dict(:x => ProcessCallParameter("x")); result=true) |> ProcessGraph
+        ))
+    end
+
+    DataCube(
+        cube.connection,
+        call,
+        cube.bands,
+        cube.spatial_extent,
+        cube.temporal_extent,
+        cube.description,
+        cube.license,
+        cube.collection
+    )
+end
+
 +(cube::DataCube, number::Real) = binary_operator(cube, number, "add")
 +(number::Real, cube::DataCube) = binary_operator(cube, number, "add", true)
 -(cube::DataCube, number::Real) = binary_operator(cube, number, "subtract")
@@ -218,8 +256,19 @@ end
 /(cube::DataCube, number::Real) = binary_operator(cube, number, "divide")
 /(number::Real, cube::DataCube) = binary_operator(cube, number, "divide", true)
 
+==(cube::DataCube, number::Real) = binary_operator(cube, number, "eq")
+==(number::Real, cube::DataCube) = binary_operator(cube, number, "eq", true)
+!=(cube::DataCube, number::Real) = binary_operator(cube, number, "neq")
+!=(number::Real, cube::DataCube) = binary_operator(cube, number, "neq", true)
+
 # element wise operations of two data cubes
 +(cube1::DataCube, cube2::DataCube) = binary_operator(cube1, cube2, "add")
 -(cube1::DataCube, cube2::DataCube) = binary_operator(cube1, cube2, "subtract")
 *(cube1::DataCube, cube2::DataCube) = binary_operator(cube1, cube2, "multiply")
 /(cube1::DataCube, cube2::DataCube) = binary_operator(cube1, cube2, "divide")
+
+sqrt(cube::DataCube) = unary_operator(cube, "sqrt")
+abs(cube::DataCube) = unary_operator(cube, "abs")
+sin(cube::DataCube) = unary_operator(cube, "sin")
+cos(cube::DataCube) = unary_operator(cube, "cos")
+!(cube::DataCube) = unary_operator(cube, "not")
