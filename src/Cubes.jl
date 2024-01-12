@@ -15,7 +15,6 @@ This process graph can be grown iterativeley by applying functions and operators
 struct DataCube
     connection::Connection
     call::ProcessCall
-
     bands
     spatial_extent
     temporal_extent
@@ -211,6 +210,25 @@ function binary_operator(cube1::DataCube, cube2::DataCube, openeo_process::Strin
     )
 end
 
+function reduce_dimension(cube::DataCube, openeo_process::String, dimension::String)
+    Symbol(openeo_process) in keys(cube.connection.processes) || error("Reducer name not found on backend")
+    Symbol(dimension) in keys(cube.collection[Symbol("cube:dimensions")]) || error("Dimension not found")
+
+    call = ProcessCall("reduce_dimension", Dict(
+        :data => cube.call,
+        :dimension => dimension,
+        :reducer => ProcessCall(openeo_process, Dict(:data => ProcessCallParameter("data"))) |> ProcessGraph
+    ))
+
+    return DataCube(
+        cube.connection, call,
+        nothing, nothing, nothing,
+        cube.collection.description,
+        cube.collection.license,
+        cube.collection
+    )
+end
+
 function unary_operator(cube::DataCube, openeo_process::String)
     if cube.call.process_id in ["apply", "reduce_dimension"]
         # can append operation to last existing process call
@@ -272,3 +290,4 @@ abs(cube::DataCube) = unary_operator(cube, "abs")
 sin(cube::DataCube) = unary_operator(cube, "sin")
 cos(cube::DataCube) = unary_operator(cube, "cos")
 !(cube::DataCube) = unary_operator(cube, "not")
+

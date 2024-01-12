@@ -23,6 +23,7 @@ export
     BoundingBox,
     DataCube,
     compute_result,
+    reduce_dimension,
     print_json,
     get_band,
     Band
