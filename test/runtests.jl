@@ -75,8 +75,13 @@ password = ENV["OPENEO_PASSWORD"]
     @test reduce_dimension(cube["B02"], "min", "t") |> typeof == DataCube
     @test reduce_dimension(cube, "min", "t") |> typeof == DataCube
 
-    @test reduce(con.max, cube1["B01"], dims="t")  |> typeof == DataCube
-    @test maximum(cube1["B01"], dims="t") |> typeof == DataCube
-    @test reduce(con.max, cube1["B01"], dims="t") |> typeof == DataCube
-    @test_throws ErrorException maximum(cube1["B01"], dims="xx")
+    @test reduce(con.max, cube["B01"], dims="t")  |> typeof == DataCube
+    @test maximum(cube["B01"], dims="t") |> typeof == DataCube
+    @test reduce(con.max, cube["B01"], dims="t") |> typeof == DataCube
+    @test_throws ErrorException maximum(cube["B01"], dims="xx")
+
+    @test cube.dimensions == ["x", "y", "t", "bands"]
+    @test cube["B01"].dimensions == ["x", "y", "t"]
+    @test maximum(cube["B01"], dims = "t").dimensions == ["x", "y"]
+    @test maximum(cube, dims = "bands").dimensions == ["x", "y", "t"]
 end
