@@ -219,7 +219,7 @@ function binary_operator(cube1::DataCube, cube2::DataCube, openeo_process::Strin
 end
 
 function reduce_dimension(cube::DataCube, openeo_process::String, dimension::String)
-    Symbol(openeo_process) in keys(cube.connection.processes) || error("Reducer name not found on backend")
+    Symbol(openeo_process) in keys(cube.connection.processes) || error("Reducer  process not found on backend")
     Symbol(dimension) in keys(cube.collection[Symbol("cube:dimensions")]) || error("Dimension not found")
 
     call = ProcessCall("reduce_dimension", Dict(
@@ -310,10 +310,7 @@ broadcasted(::typeof(!), cube::DataCube) = unary_operator(cube, "not")
 
 # reduce operations
 function reduce(op::Process, cube::DataCube; dims::String)
-    if !(op.parameters[1].name == "data" && op.parameters[2].name == "ignore_nodata")
-        error("Process eligible to reduce must only contain parameters data and ignore_nodata.")
-    end
-
+    ("data" in op.parameters .|> x -> x.name) || error("Process must have argument data.")
     dims in cube.dimensions || error("Dimension $dims not present in the data cube.")
 
     reduce_dimension(cube::DataCube, op.id, dims)
