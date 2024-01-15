@@ -5,6 +5,7 @@
 #
 
 import Base: broadcasted, +, -, *, /, cos, sqrt, abs, ==, !, !=, maximum, reduce
+using Statistics
 
 """
 openEO n-dimensional array of ratser data
@@ -317,3 +318,4 @@ function reduce(op::Process, cube::DataCube; dims::String)
 end
 
 maximum(cube::DataCube; dims::String) = reduce_dimension(cube::DataCube, "max", dims)
+Statistics.mean(cube::DataCube; dims::String) = reduce_dimension(cube::DataCube, "mean", dims)

@@ -24,7 +24,6 @@ export
     ProcessCall,
     Processes,
     ProcessGraph,
-    ProcessGraph,
     reduce_dimension,
     register_processes
 end

@@ -51,6 +51,7 @@ Calculate the enhanced vegetation index (EVI) analog to this [tutorial](https://
 
 ```julia
 using OpenEOClient
+using Statistics
 con = connect("openeo.dataspace.copernicus.eu/openeo", "", OpenEOClient.oidc_auth)
 cube = DataCube(con, "SENTINEL2_L2A",
     BoundingBox(west=5.14, south=51.17, east=5.17, north=51.19),
@@ -60,9 +61,11 @@ blue = cube["B02"] * 0.0001
 red = cube["B04"] * 0.0001
 nir = cube["B08"] * 0.0001
 evi = @. 2.5 * (nir - red) / (nir + 6.0 * red - 7.5 * blue + 1.0)
+mean_evi = mean(evi, dims = "t")
 # openEO DataCube
 #    collection: SENTINEL2_L2A
-#    bands: Single band
+#    dimensions: ["t", "x", "y"]
+#    bands: Unknown
 #    spatial extent: BoundingBox{Float64}(5.14, 51.17, 5.17, 51.19)
 #    temporal extent: ("2021-02-01", "2021-02-10")
 #    license: proprietary
@@ -70,4 +73,4 @@ evi = @. 2.5 * (nir - red) / (nir + 6.0 * red - 7.5 * blue + 1.0)
 ```
 
 Up to now, the analysis workflow is just being constructed on the client.
-It can be executed on the server using `compute_result(evi)` which returns the file name of the downloaded result.
+It can be executed on the server using `compute_result(mean_evi)` which returns the file name of the downloaded result.
