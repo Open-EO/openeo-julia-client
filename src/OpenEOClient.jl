@@ -10,20 +10,20 @@ include("API.jl")
 include("Cubes.jl")
 
 export
+    Band,
+    BoundingBox,
+    compute_result,
     connect,
-    list_collections,
+    DataCube,
     describe_collection,
+    to_band,
+    list_collections,
     list_jobs,
     list_processes,
-    register_processes,
+    print_json,
     ProcessCall,
     Processes,
     ProcessGraph,
-    ProcessGraph,
-    BoundingBox,
-    DataCube,
-    compute_result,
-    print_json,
-    get_band,
-    Band
+    reduce_dimension,
+    register_processes
 end

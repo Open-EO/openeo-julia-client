@@ -12,8 +12,8 @@ password = ENV["OPENEO_PASSWORD"]
     @test "api_version" in keys(response)
     @test "backend_version" in keys(response)
 
-    list_processes(unauth_con)
-    list_collections(unauth_con)
+    @test list_processes(unauth_con) |> typeof == Vector{OpenEOClient.Process}
+    @test list_collections(unauth_con) |> typeof == Vector{OpenEOClient.Collection}
 
     c1 = connect(host, version)
     c2 = connect(host, version, username, password)
@@ -40,19 +40,48 @@ password = ENV["OPENEO_PASSWORD"]
         ("2020-01-20", "2020-01-30"), ["B01", "B02"]
     )
 
+    @test_throws MethodError abs(cube)
+    @test abs.(cube) |> typeof == DataCube
+
     cube["B01"]
-    cube["B01"] + 1
-    1 + cube["B01"]
-    cube["B01"] + 1 + 2
-    cube + 1
-    1 + cube + 1
-    cube["B01"] + cube["B02"]
-    cube + cube
-    cube + 1
-    cube + 1 + 2
-    1 + cube
-    @test (cube["B01"]+1+1).call.arguments[:reducer] |> length == 3
-    @test (cube["B01"] + cube["B02"]).call.process_id == "merge_cubes"
-    @test (cube+2*3).call.arguments[:process] |> length == 1
-    @test cube2 = cube + 2 * 3 |> typeof == DataCube
+    cube["B01"] .+ 1
+    1 .+ cube["B01"]
+    cube["B01"] .+ 1 .+ 2
+    1 .+ cube .+ 1
+    cube["B01"] .+ cube["B02"]
+    cube .+ cube
+    cube .+ 1
+    cube .+ 1 .+ 2
+    1 .+ cube
+    @test (cube["B01"].+1 .+ 1).call.arguments[:reducer] |> length == 3
+    @test (cube["B01"] .+ cube["B02"]).call.process_id == "merge_cubes"
+    @test (cube .+ 2*3).call.arguments[:process] |> length == 1
+    @test cube2 = cube .+ 2 * 3 |> typeof == DataCube
+
+    # OpenEO applies processes per element thus enforce broadcasting
+    @test sin.(cube) |> typeof == DataCube
+    @test_throws MethodError sin(cube)
+    @test cube ./ 2 |> typeof == DataCube
+    @test cube / 2 |> typeof == DataCube
+    @test_throws MethodError 2 / cube
+    @test 2 ./ cube |> typeof == DataCube
+    @test_throws MethodError cube / cube
+    @test cube ./ cube |> typeof == DataCube
+    @test cube + cube |> typeof == DataCube
+    @test cube .+ cube |> typeof == DataCube
+
+    @test_throws ErrorException reduce_dimension(cube, "xxx", "t") 
+    @test_throws ErrorException reduce_dimension(cube, "min", "xxx")
+    @test reduce_dimension(cube["B02"], "min", "t") |> typeof == DataCube
+    @test reduce_dimension(cube, "min", "t") |> typeof == DataCube
+
+    @test maximum(cube["B01"], dims="t") |> typeof == DataCube
+    @test reduce(cube.connection.max, cube["B01"], dims="t") |> typeof == DataCube
+    @test_throws ErrorException maximum(cube["B01"], dims="xx") 
+    @test_throws ErrorException reduce(cube.connection.sin, cube, dims="t")
+
+    @test cube.dimensions == ["x", "y", "t", "bands"]
+    @test cube["B01"].dimensions == ["x", "y", "t"]
+    @test maximum(cube["B01"], dims = "t").dimensions == ["x", "y"]
+    @test maximum(cube, dims = "bands").dimensions == ["x", "y", "t"]
 end

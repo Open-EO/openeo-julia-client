@@ -28,7 +28,7 @@ using Pkg
 Pkg.add(url="https://github.com/Open-EO/openeo-julia-client.git")
 ```
 
-Connect to an openEO backend server and list available collections of raster data image datasets:
+Connect to an openEO backend server and list available collections of raster image datasets:
 
 ```julia
 using OpenEOClient
@@ -45,11 +45,13 @@ con.collections
 #  LANDSAT8_L2: Landsat 8 level 2 ARD, European Coverage
 ```
 
-Further computations require a free registration at the [Copernicus Data Space](https://dataspace.copernicus.eu).
+Further computations require a free registration at an openEO backend.
+Here, we use the [Copernicus Data Space](https://dataspace.copernicus.eu).
 Calculate the enhanced vegetation index (EVI) analog to this [tutorial](https://documentation.dataspace.copernicus.eu/APIs/openEO/Python_Client/Python.html):
 
 ```julia
 using OpenEOClient
+using Statistics
 con = connect("openeo.dataspace.copernicus.eu/openeo", "", OpenEOClient.oidc_auth)
 cube = DataCube(con, "SENTINEL2_L2A",
     BoundingBox(west=5.14, south=51.17, east=5.17, north=51.19),
@@ -58,10 +60,12 @@ cube = DataCube(con, "SENTINEL2_L2A",
 blue = cube["B02"] * 0.0001
 red = cube["B04"] * 0.0001
 nir = cube["B08"] * 0.0001
-evi = 2.5 * (nir - red) / (nir + 6.0 * red - 7.5 * blue + 1.0)
+evi = @. 2.5 * (nir - red) / (nir + 6.0 * red - 7.5 * blue + 1.0)
+mean_evi = mean(evi, dims = "t")
 # openEO DataCube
 #    collection: SENTINEL2_L2A
-#    bands: Single band
+#    dimensions: ["t", "x", "y"]
+#    bands: Unknown
 #    spatial extent: BoundingBox{Float64}(5.14, 51.17, 5.17, 51.19)
 #    temporal extent: ("2021-02-01", "2021-02-10")
 #    license: proprietary
@@ -69,4 +73,4 @@ evi = 2.5 * (nir - red) / (nir + 6.0 * red - 7.5 * blue + 1.0)
 ```
 
 Up to now, the analysis workflow is just being constructed on the client.
-It can be executed on the server using `compute_result(evi)` which returns the file name of the downloaded result.
+It can be executed on the server using `compute_result(mean_evi)` which returns the file name of the downloaded result.
