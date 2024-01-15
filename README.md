@@ -62,14 +62,14 @@ red = cube["B04"] * 0.0001
 nir = cube["B08"] * 0.0001
 evi = @. 2.5 * (nir - red) / (nir + 6.0 * red - 7.5 * blue + 1.0)
 mean_evi = mean(evi, dims = "t")
-# openEO DataCube
-#    collection: SENTINEL2_L2A
-#    dimensions: ["t", "x", "y"]
-#    bands: Unknown
-#    spatial extent: BoundingBox{Float64}(5.14, 51.17, 5.17, 51.19)
-#    temporal extent: ("2021-02-01", "2021-02-10")
-#    license: proprietary
-#    connection: https://openeo.dataspace.copernicus.eu/openeo/
+#openEO DataCube
+#   collection: SENTINEL2_L2A
+#   dimensions: ["x", "y"]
+#   bands: Unknown
+#   spatial extent: nothing
+#   temporal extent: nothing
+#   license: proprietary
+#   connection: https://openeo.dataspace.copernicus.eu/openeo/
 ```
 
 Up to now, the analysis workflow is just being constructed on the client.
