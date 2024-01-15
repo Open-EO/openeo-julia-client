@@ -4,7 +4,7 @@
 #   - convertsion chain: DataCube -> ProcessCall -> openEO JSON
 #
 
-import Base: broadcasted, +, -, *, /, cos, sqrt, abs, ==, !, !=
+import Base: broadcasted, +, -, *, /, cos, sqrt, abs, ==, !, !=, maximum, reduce
 
 """
 openEO n-dimensional array of ratser data
@@ -15,6 +15,7 @@ struct DataCube
     connection::Connection
     call::ProcessCall
     bands
+    dimensions
     spatial_extent
     temporal_extent
     description
@@ -24,7 +25,7 @@ end
 
 function Base.show(io::IO, ::MIME"text/plain", c::DataCube)
     bands_str = if isnothing(c.bands)
-        "Single band"
+        "Unknown"
     elseif length(c.bands) == 1
         c.bands[1]
     elseif length(c.bands) <= 5
@@ -33,10 +34,12 @@ function Base.show(io::IO, ::MIME"text/plain", c::DataCube)
         c.bands[1:min(length(c.bands), 5)] |> x -> vcat(x, ["..."]) |> x -> join(x, ", ")
     end
 
+    dimensions_str = isnothing(c.dimensions) ? "Unknown" : c.dimensions
     collection_str = isnothing(c.collection) ? "Unknown" : c.collection["id"]
 
     println(io, "openEO DataCube")
     println(io, "   collection: $collection_str")
+    println(io, "   dimensions: $dimensions_str")
     println(io, "   bands: $bands_str")
     println(io, "   spatial extent: $(c.spatial_extent)")
     println(io, "   temporal extent: $(c.temporal_extent)")
@@ -48,6 +51,7 @@ print_json(cube::DataCube) = cube.call |> ProcessGraph |> print_json
 
 function DataCube(connection::Connection, collection_id::String, spatial_extent::BoundingBox, temporal_extent::Tuple{String,String}, bands::Vector{String})
     collection = describe_collection(connection.credentials, collection_id)
+    dimensions = collection[Symbol("cube:dimensions")] |> keys .|> String
 
     call = ProcessCall("load_collection", Dict(
         :id => collection_id,
@@ -57,7 +61,7 @@ function DataCube(connection::Connection, collection_id::String, spatial_extent:
     ))
 
     return DataCube(
-        connection, call, bands,
+        connection, call, bands, dimensions,
         spatial_extent, temporal_extent,
         collection.description,
         collection.license,
@@ -67,6 +71,7 @@ end
 
 function DataCube(connection::Connection, collection_id)
     collection = describe_collection(connection.credentials, collection_id)
+    dimensions = collection[Symbol("cube:dimensions")] |> keys .|> String
 
     bands = try
         collection["cube:dimensions"].bands.values |> Vector{String}
@@ -96,7 +101,7 @@ function DataCube(connection::Connection, collection_id)
     ))
 
     return DataCube(
-        connection, call, bands,
+        connection, call, bands, dimensions,
         spatial_extent, temporal_extent,
         collection.description,
         collection.license,
@@ -104,8 +109,10 @@ function DataCube(connection::Connection, collection_id)
     )
 end
 
-function get_band(cube::DataCube, band::String)
-    band in cube.bands || error("Band $get_band must be one of $(cube.arguments[:bands])")
+function to_band(cube::DataCube, band::String)
+    band in cube.bands || error("Band $to_band must be one of $(cube.arguments[:bands])")
+
+    dimensions = setdiff(cube.dimensions, ["bands"])
 
     args = Dict(
         :data => cube.call,
@@ -116,10 +123,10 @@ function get_band(cube::DataCube, band::String)
         )) |> ProcessGraph
     )
     call = ProcessCall("reduce_dimension", args)
-    return DataCube(cube.connection, call, nothing, cube.spatial_extent, cube.temporal_extent, cube.description, cube.license, cube.collection)
+    return DataCube(cube.connection, call, nothing, dimensions, cube.spatial_extent, cube.temporal_extent, cube.description, cube.license, cube.collection)
 end
 
-Base.getindex(cube::DataCube, band_name) = get_band(cube, band_name)
+Base.getindex(cube::DataCube, band_name) = to_band(cube, band_name)
 
 compute_result(cube::DataCube) = cube.call |> ProcessGraph |> cube.connection.compute_result
 ProcessGraph(cube::DataCube) = ProcessGraph(cube.call)
@@ -174,7 +181,7 @@ function binary_operator(cube::DataCube, number::Real, openeo_process::String, r
     end
 
     return DataCube(
-        cube.connection, call, cube.bands,
+        cube.connection, call, cube.bands, cube.dimensions,
         cube.spatial_extent, cube.temporal_extent,
         cube.collection.description,
         cube.collection.license,
@@ -200,7 +207,9 @@ function binary_operator(cube1::DataCube, cube2::DataCube, openeo_process::Strin
     ))
 
     return DataCube(
-        cube1.connection, call, nothing,
+        cube1.connection, call,
+        merge(cube1.bands, cube2.bands),
+        merge(cube1.dimensions, cube2.dimensions),
         merge(cube1.spatial_extent, cube2.spatial_extent),
         merge(cube1.temporal_extent, cube2.temporal_extent),
         merge(cube1.description, cube2.description),
@@ -219,9 +228,12 @@ function reduce_dimension(cube::DataCube, openeo_process::String, dimension::Str
         :reducer => ProcessCall(openeo_process, Dict(:data => ProcessCallParameter("data"))) |> ProcessGraph
     ))
 
+    bands = dimension == "bands" ? nothing : cube.bands
+    dimensions = isnothing(cube.dimensions) ? nothing : setdiff(cube.dimensions, [dimension])
+
     return DataCube(
         cube.connection, call,
-        nothing, nothing, nothing,
+        bands, dimensions, nothing, nothing,
         cube.collection.description,
         cube.collection.license,
         cube.collection
@@ -256,6 +268,7 @@ function unary_operator(cube::DataCube, openeo_process::String)
         cube.connection,
         call,
         cube.bands,
+        cube.dimensions,
         cube.spatial_extent,
         cube.temporal_extent,
         cube.description,
@@ -294,3 +307,16 @@ broadcasted(::typeof(abs), cube::DataCube) = unary_operator(cube, "abs")
 broadcasted(::typeof(sin), cube::DataCube) = unary_operator(cube, "sin")
 broadcasted(::typeof(cos), cube::DataCube) = unary_operator(cube, "cos")
 broadcasted(::typeof(!), cube::DataCube) = unary_operator(cube, "not")
+
+# reduce operations
+function reduce(op::Process, cube::DataCube; dims::String)
+    if !(op.parameters[1].name == "data" && op.parameters[2].name == "ignore_nodata")
+        error("Process eligible to reduce must only contain parameters data and ignore_nodata.")
+    end
+
+    dims in cube.dimensions || error("Dimension $dims not present in the data cube.")
+
+    reduce_dimension(cube::DataCube, op.id, dims)
+end
+
+maximum(cube::DataCube; dims::String) = reduce_dimension(cube::DataCube, "max", dims)
