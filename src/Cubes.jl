@@ -4,7 +4,7 @@
 #   - convertsion chain: DataCube -> ProcessCall -> openEO JSON
 #
 
-import Base: broadcasted, +, -, *, /, cos, sqrt, abs, ==, !, !=, maximum, reduce
+import Base: broadcasted, +, -, *, /, cos, sqrt, abs, ==, !, !=, >, >=, <, <=, maximum, reduce
 using Statistics
 
 """
@@ -124,7 +124,7 @@ function to_band(cube::DataCube, band::String)
         )) |> ProcessGraph
     )
     call = ProcessCall("reduce_dimension", args)
-    return DataCube(cube.connection, call, nothing, dimensions, cube.spatial_extent, cube.temporal_extent, cube.description, cube.license, cube.collection)
+    return DataCube(cube.connection, call, [], dimensions, cube.spatial_extent, cube.temporal_extent, cube.description, cube.license, cube.collection)
 end
 
 Base.getindex(cube::DataCube, band_name) = to_band(cube, band_name)
@@ -190,6 +190,9 @@ function binary_operator(cube::DataCube, number::Real, openeo_process::String, r
     )
 end
 
+# > and < needs reversed versions
+binary_operator(number::Real, cube::DataCube, openeo_process::String, reverse=false) = binary_operator(cube::DataCube, number::Real, openeo_process::String, reverse)
+
 merge(a, b) = a == b ? a : nothing
 
 function binary_operator(cube1::DataCube, cube2::DataCube, openeo_process::String)
@@ -229,12 +232,14 @@ function reduce_dimension(cube::DataCube, openeo_process::String, dimension::Str
         :reducer => ProcessCall(openeo_process, Dict(:data => ProcessCallParameter("data"))) |> ProcessGraph
     ))
 
-    bands = dimension == "bands" ? nothing : cube.bands
+    bands = dimension == "bands" ? [] : cube.bands
     dimensions = isnothing(cube.dimensions) ? nothing : setdiff(cube.dimensions, [dimension])
+    spatial_extent = dimension in ["x", "y"] ? nothing : cube.spatial_extent
+    temporal_extent = dimension == "t" ? nothing : cube.temporal_extent
 
     return DataCube(
         cube.connection, call,
-        bands, dimensions, nothing, nothing,
+        bands, dimensions, spatial_extent, temporal_extent,
         cube.collection.description,
         cube.collection.license,
         cube.collection
@@ -292,7 +297,19 @@ broadcasted(::typeof(/), cube::DataCube, number::Real) = binary_operator(cube, n
 broadcasted(::typeof(/), number::Real, cube::DataCube) = binary_operator(cube, number, "divide", true)
 
 broadcasted(::typeof(==), cube::DataCube, number::Real) = binary_operator(cube, number, "eq")
-broadcasted(::typeof(==), number::DataCube, cube::Real) = binary_operator(cube, number, "eq", true)
+broadcasted(::typeof(==), number::Real, cube::DataCube) = binary_operator(cube, number, "eq", true)
+broadcasted(::typeof(!=), cube::DataCube, number::Real) = binary_operator(cube, number, "neq")
+broadcasted(::typeof(!=), number::Real, cube::DataCube) = binary_operator(cube, number, "neq", true)
+
+broadcasted(::typeof(<), cube::DataCube, number::Real) = binary_operator(cube, number, "lt")
+broadcasted(::typeof(<), number::Real, cube::DataCube) = binary_operator(cube, number, "lt", true)
+broadcasted(::typeof(>), cube::DataCube, number::Real) = binary_operator(cube, number, "gt")
+broadcasted(::typeof(>), number::Real, cube::DataCube) = binary_operator(cube, number, "gt", true)
+
+broadcasted(::typeof(<=), cube::DataCube, number::Real) = binary_operator(cube, number, "lte")
+broadcasted(::typeof(<=), number::Real, cube::DataCube) = binary_operator(cube, number, "lte", true)
+broadcasted(::typeof(>=), cube::DataCube, number::Real) = binary_operator(cube, number, "gte")
+broadcasted(::typeof(>=), number::Real, cube::DataCube) = binary_operator(cube, number, "gte", true)
 
 # element wise operations of two data cubes
 +(cube1::DataCube, cube2::DataCube) = binary_operator(cube1, cube2, "add")

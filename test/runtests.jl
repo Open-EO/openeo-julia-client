@@ -84,4 +84,17 @@ password = ENV["OPENEO_PASSWORD"]
     @test cube["B01"].dimensions == ["x", "y", "t"]
     @test maximum(cube["B01"], dims = "t").dimensions == ["x", "y"]
     @test maximum(cube, dims = "bands").dimensions == ["x", "y", "t"]
+
+    @test (cube["B02"] .== 0.5) |> typeof == DataCube
+    @test (0.5 .== cube["B02"]) |> typeof == DataCube
+    @test (cube["B02"] .!= 0.5) |> typeof == DataCube
+    @test (0.5 .!= cube["B02"]) |> typeof == DataCube
+    @test (cube["B02"] .< 0.5) |> typeof == DataCube
+    @test (0.5 .< cube["B02"]) |> typeof == DataCube
+    @test (cube["B02"] .<= 0.5) |> typeof == DataCube
+    @test (0.5 .<= cube["B02"]) |> typeof == DataCube
+    @test (cube["B02"] .> 0.5) |> typeof == DataCube
+    @test (0.5 .> cube["B02"]) |> typeof == DataCube
+    @test (cube["B02"] .>= 0.5) |> typeof == DataCube
+    @test (0.5 .>= cube["B02"]) |> typeof == DataCube
 end
