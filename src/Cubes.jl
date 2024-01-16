@@ -4,8 +4,9 @@
 #   - convertsion chain: DataCube -> ProcessCall -> openEO JSON
 #
 
-import Base: broadcasted, +, -, *, /, cos, sqrt, abs, ==, !, !=, >, >=, <, <=, maximum, reduce
-using Statistics
+import Base: broadcasted, +, -, *, /, ==, !, !=, >, >=, <, <=, reduce
+import Base: abs, acos, asin, atan, ceil, cos, cosh, exp, floor, log, maximum, minimum, sign, sin, sinh, sqrt, tan, tanh
+import Statistics: mean, median, var
 
 """
 openEO n-dimensional array of ratser data
@@ -246,7 +247,7 @@ function reduce_dimension(cube::DataCube, openeo_process::String, dimension::Str
     )
 end
 
-function unary_operator(cube::DataCube, openeo_process::String)
+function unary_operator(cube::DataCube, openeo_process::String; kwargs...)
     if cube.call.process_id in ["apply", "reduce_dimension"]
         # can append operation to last existing process call
         argument = Dict("apply" => :process, "reduce_dimension" => :reducer)[cube.call.process_id]
@@ -258,7 +259,7 @@ function unary_operator(cube::DataCube, openeo_process::String)
             call.result = false
         end
 
-        new_call = ProcessCall(openeo_process, Dict(:x => ProcessCallParameter("x")); result=true)
+        new_call = ProcessCall(openeo_process, Dict(:x => ProcessCallParameter("x"), kwargs...); result=true)
         push!(new_steps, new_call)
 
         call = cube.call
@@ -266,7 +267,7 @@ function unary_operator(cube::DataCube, openeo_process::String)
     else
         call = ProcessCall("apply", Dict(
             :data => cube.call,
-            :process => ProcessCall(openeo_process, Dict(:x => ProcessCallParameter("x")); result=true) |> ProcessGraph
+            :process => ProcessCall(openeo_process, Dict(:x => ProcessCallParameter("x"), kwargs...); result=true) |> ProcessGraph
         ))
     end
 
@@ -287,6 +288,7 @@ end
 *(cube::DataCube, number::Real) = binary_operator(cube, number, "multiply")
 *(number::Real, cube::DataCube) = binary_operator(cube, number, "multiply", true)
 /(cube::DataCube, number::Real) = binary_operator(cube, number, "divide")
+
 broadcasted(::typeof(+), cube::DataCube, number::Real) = binary_operator(cube, number, "add")
 broadcasted(::typeof(+), number::Real, cube::DataCube) = binary_operator(cube, number, "add", true)
 broadcasted(::typeof(-), cube::DataCube, number::Real) = binary_operator(cube, number, "subtract")
@@ -320,11 +322,31 @@ broadcasted(::typeof(*), cube1::DataCube, cube2::DataCube) = binary_operator(cub
 broadcasted(::typeof(/), cube1::DataCube, cube2::DataCube) = binary_operator(cube1, cube2, "divide")
 
 # element wise unary operations
-broadcasted(::typeof(sqrt), cube::DataCube) = unary_operator(cube, "sqrt")
-broadcasted(::typeof(abs), cube::DataCube) = unary_operator(cube, "abs")
-broadcasted(::typeof(sin), cube::DataCube) = unary_operator(cube, "sin")
-broadcasted(::typeof(cos), cube::DataCube) = unary_operator(cube, "cos")
 broadcasted(::typeof(!), cube::DataCube) = unary_operator(cube, "not")
+broadcasted(::typeof(abs), cube::DataCube) = unary_operator(cube, "abs")
+broadcasted(::typeof(acos), cube::DataCube) = unary_operator(cube, "arccos")
+broadcasted(::typeof(asin), cube::DataCube) = unary_operator(cube, "arcsin")
+broadcasted(::typeof(atan), cube::DataCube) = unary_operator(cube, "arctan")
+broadcasted(::typeof(ceil), cube::DataCube) = unary_operator(cube, "ceil")
+broadcasted(::typeof(cos), cube::DataCube) = unary_operator(cube, "cos")
+broadcasted(::typeof(cosh), cube::DataCube) = unary_operator(cube, "cosh")
+broadcasted(::typeof(exp), cube::DataCube) = unary_operator(cube, "exp")
+broadcasted(::typeof(floor), cube::DataCube) = unary_operator(cube, "floor")
+broadcasted(::typeof(log), base::Real, cube::DataCube) = unary_operator(cube, "log"; base=base)
+broadcasted(::typeof(log), cube::DataCube) = unary_operator(cube, "ln")
+broadcasted(::typeof(sign), cube::DataCube) = unary_operator(cube, "sgn")
+broadcasted(::typeof(sin), cube::DataCube) = unary_operator(cube, "sin")
+broadcasted(::typeof(sinh), cube::DataCube) = unary_operator(cube, "sinh")
+broadcasted(::typeof(sqrt), cube::DataCube) = unary_operator(cube, "sqrt")
+broadcasted(::typeof(tan), cube::DataCube) = unary_operator(cube, "tan")
+broadcasted(::typeof(tanh), cube::DataCube) = unary_operator(cube, "tanh")
+
+# reducing operations
+mean(cube::DataCube; dims::String) = reduce_dimension(cube::DataCube, "mean", dims)
+median(cube::DataCube; dims::String) = reduce_dimension(cube::DataCube, "median", dims)
+minimum(cube::DataCube; dims::String) = reduce_dimension(cube::DataCube, "min", dims)
+maximum(cube::DataCube; dims::String) = reduce_dimension(cube::DataCube, "max", dims)
+var(cube::DataCube; dims::String) = reduce_dimension(cube::DataCube, "variance", dims)
 
 # reduce operations
 function reduce(op::Process, cube::DataCube; dims::String)
@@ -333,6 +355,3 @@ function reduce(op::Process, cube::DataCube; dims::String)
 
     reduce_dimension(cube::DataCube, op.id, dims)
 end
-
-maximum(cube::DataCube; dims::String) = reduce_dimension(cube::DataCube, "max", dims)
-Statistics.mean(cube::DataCube; dims::String) = reduce_dimension(cube::DataCube, "mean", dims)
