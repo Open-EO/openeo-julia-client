@@ -27,21 +27,25 @@ struct Process
     experimental::Union{Nothing,Bool}
 end
 StructTypes.StructType(::Type{Process}) = StructTypes.Struct()
-function (process::Process)(args...)
-    params = get_parameters(process.parameters)
-    length(args) == length(params) || throw(ArgumentError("Number of arguments does not match for process $(process.id)"))
-    argument_dict = Dict{Symbol,Any}()
-    for i in 1:length(args)
-        argname, argtype = params[i]
-        args[i] isa argtype || throw(ArgumentError("Type of argument number $i does not match, expected $argtype but got $(typeof(args[i]))"))
-        argument_dict[argname] = args[i]
+
+function (process::Process)(args...; kwargs...)
+    required_args = get_parameters(process.parameters, :required)
+
+    length(required_args) == length(args) || error("Must provide $(length(required_args)) positional arguments")
+
+    args_d = Dict{Symbol,Any}(zip(map(x -> x.first, required_args), args))
+    merge!(args_d, Dict(kwargs))
+
+    if isnothing(args_d)
+        args_d = Dict{Symbol,Any}()
     end
-    ProcessCall("$(process.id)", argument_dict)
+    ProcessCall("$(process.id)", args_d)
 end
+
 function Docs.getdoc(process::Process)
-    arguments = get_parameters(process.parameters)
-    args_str = join(["$(k)::$(v)" for (k, v) in arguments], ", ")
-    docs = """    $(process.id)($(args_str))
+    args_str = join(["$(k)::$(v)" for (k, v) in get_parameters(process.parameters, :required)], ", ")
+    kwargs_str = join(["$(k)::$(v)" for (k, v) in get_parameters(process.parameters, :optional)], ", ")
+    docs = """    $(process.id)($(args_str); $(kwargs_str))
     $(process.description)
     """
     Markdown.parse(docs)
@@ -49,7 +53,9 @@ end
 Base.Docs.doc(p::Process, ::Type=Union{}) = Base.Docs.getdoc(p)
 
 function Base.show(io::IO, ::MIME"text/plain", p::Process)
-    print(io, "$(p.id)($(join([x.name for x in p.parameters], ", "))): $(p.summary)")
+    args_str = join(["$(k)::$(v)" for (k, v) in get_parameters(p.parameters, :required)], ", ")
+    kwargs_str = join(["$(k)::$(v)" for (k, v) in get_parameters(p.parameters, :optional)], ", ")
+    print(io, "$(p.id)($(args_str); $(kwargs_str)): $(p.summary)")
 end
 
 # root e.g. https://earthengine.openeo.org/v1.0/processes
@@ -76,7 +82,6 @@ mutable struct ProcessCall <: AbstractProcessCall
     const arguments::Dict{Symbol,Any}
     result::Bool
 end
-ProcessCall(id, process_id, arguments) = ProcessCall(id, process_id, arguments, false)
 StructTypes.StructType(::Type{ProcessCall}) = StructTypes.Mutable()
 StructTypes.excludes(::Type{ProcessCall}) = (:id,)
 
@@ -112,7 +117,7 @@ function Base.show(io::IO, ::MIME"text/plain", p::ProcessCall)
     pretty_print(io, Dict(:result => p.result))
 end
 
-function get_parameters(parameters)
+function get_parameters(parameters, keep=:all)
     # openEO type string to Julia type
     julia_types_map = Dict(
         "string" => String,
@@ -145,7 +150,9 @@ function get_parameters(parameters)
         julia_types = [get(julia_types_map, t, String) for t in types]
         julia_type = Union{julia_types...}
 
-        push!(res, name => julia_type)
+        if keep == :all || (keep == :optional && p.optional == true) || (keep == :required && isnothing(p.optional))
+            push!(res, name => julia_type)
+        end
     end
     return res
 end
