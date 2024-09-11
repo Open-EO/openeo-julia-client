@@ -23,10 +23,10 @@ password = ENV["OPENEO_PASSWORD"]
 c = connect("earthengine.openeo.org", "v1.0", username, password)
 step1 = c.load_collection(
     "COPERNICUS/S2", BoundingBox(west=16.06, south=48.06, east=16.65, north=48.35),
-    ["2020-01-01", "2020-01-31"], ["B10"]
+    ["2020-01-01", "2020-01-31"]; bands = ["B10"]
 )
-step2 = c.reduce_dimension(step1, ProcessGraph("median"), "t", nothing)
-step3 = c.save_result(step2, "GTIFF-ZIP", Dict())
+step2 = c.reduce_dimension(step1, ProcessGraph("median"), "t")
+step3 = c.save_result(step2, "GTIFF")
 path = c.compute_result(step3)
 ```
 
