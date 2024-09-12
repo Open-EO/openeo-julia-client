@@ -76,6 +76,11 @@ struct ProcessCallParameter <: AbstractProcessCall
     from_parameter::String
 end
 
+"""
+Placeholder to define process graphs e.g. lambda functions
+"""
+const value = ProcessCallParameter("value")
+
 mutable struct ProcessCall <: AbstractProcessCall
     const id::String
     const process_id::String

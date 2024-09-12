@@ -1,6 +1,6 @@
 using OrderedCollections
 
-function flatten!(g::AbstractProcessCall, root_id, nodes=OrderedSet{ProcessCall}())
+function flatten!(g::AbstractProcessCall, root_id, nodes=OrderedSet{AbstractProcessCall}())
     has_parameter = x -> ProcessCallParameter in typeof.(values(x.arguments))
     arguments_nodes = filter(((k, v),) -> v isa ProcessCall && !has_parameter(v), g.arguments)
 
@@ -52,6 +52,8 @@ Base.getindex(g::ProcessGraph, i) = Base.getindex(g.process_graph, i)
 Base.length(g::ProcessGraph) = Base.length(g.process_graph)
 print_json(g::ProcessGraph) = g |> JSON3.write |> JSON3.pretty
 
+ProcessGraph(value::ProcessCallParameter) = ProcessGraph(value * 1) # allow identity ProcessGraph
+
 """
 Create a ProcessGraph to reduce dimesnions
 """
@@ -96,3 +98,15 @@ function compute_result(connection::AuthorizedCredentials, json_graph_path::Stri
     process_graph = JSON3.read(json_graph_path) |> Dict
     return compute_result(connection, process_graph, kw...)
 end
+
+
+#
+# Build a ProcessGraph like a lambda function
+#
+
+Base.isequal(x::ProcessCall, y::ProcessCall) = x.id == y.id # required to create OrderedDict for ProcessGraph
+
+Base.log(x::AbstractProcessCall, base::Number) = ProcessCall("log", Dict(:x => x, :base => base))
+Base.:(*)(x::AbstractProcessCall, y::Number) = ProcessCall("multiply", Dict(:x => x, :y => y))
+Base.:(*)(x::Number, y::AbstractProcessCall) = ProcessCall("multiply", Dict(:x => x, :y => y))
+Base.:(==)(x::AbstractProcessCall, y) = ProcessCall("eq", Dict(:x => x, :y => y))
