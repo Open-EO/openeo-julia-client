@@ -74,3 +74,9 @@ mean_evi = mean(evi, dims = "t")
 
 Up to now, the analysis workflow is just being constructed on the client.
 It can be executed on the server using `compute_result(mean_evi)` which returns the file name of the downloaded result.
+
+## Funding
+
+<img src="https://ovl.oceandatalab.com/resources/ESA_NoR_logo.svg" align="left" height="50" />
+<img src="https://upload.wikimedia.org/wikipedia/commons/8/80/ESA_logo.svg" align="left" height="50" />
+This project was supported by the ESA Network of Resources Initiative.
