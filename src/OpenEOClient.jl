@@ -15,6 +15,7 @@ export
     compute_result,
     connect,
     DataCube,
+    value,
     describe_collection,
     to_band,
     list_collections,
